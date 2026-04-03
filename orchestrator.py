@@ -322,27 +322,33 @@ async def _tick():
         running_jobs = db.query(Job).filter(Job.status == "running").all()
 
         for job in running_jobs:
-            for task in _get_ready_tasks(db, job.id):
-                if task.id in _running:
-                    continue
+            ready = _get_ready_tasks(db, job.id)
 
-                agent = (
-                    db.query(Agent)
-                    .filter(Agent.type == task.agent_type, Agent.status == "idle")
-                    .first()
-                )
-                if not agent:
-                    continue
-
-                task.input_data = json.dumps(_collect_input(db, task))
-                task.agent_id   = agent.id
-                task.status     = "queued"
-                agent.status    = "busy"
-                db.commit()
-
-                logger.info("→ Dispatch task=%s agent=%s", task.step_name, agent.name)
-                _running.add(task.id)
-                asyncio.create_task(_run_task(task.id))
+            if ready:
+                for task in ready:
+                    if task.id in _running:
+                        continue
+                    agent = (
+                        db.query(Agent)
+                        .filter(Agent.type == task.agent_type, Agent.status == "idle")
+                        .first()
+                    )
+                    if not agent:
+                        continue
+                    task.input_data = json.dumps(_collect_input(db, task))
+                    task.agent_id   = agent.id
+                    task.status     = "queued"
+                    agent.status    = "busy"
+                    db.commit()
+                    logger.info("→ Dispatch task=%s agent=%s", task.step_name, agent.name)
+                    _running.add(task.id)
+                    asyncio.create_task(_run_task(task.id))
+            else:
+                # Немає pending задач — можливо всі завершені (схвалені вручну)
+                just_done = _check_job_completion(db, job.id)
+                if just_done:
+                    asyncio.create_task(_try_telegram_autopost(job.id))
+                    await manager.broadcast({"type": "job_update", "job_id": job.id, "status": "done"})
 
     except Exception:
         logger.exception("Orchestrator tick error")

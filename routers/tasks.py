@@ -1,3 +1,4 @@
+import asyncio
 import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -5,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from database import get_db, Task, Agent, Job
-from orchestrator import manager
+from orchestrator import manager, _check_job_completion, _try_telegram_autopost
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -73,20 +74,29 @@ async def approve_task(task_id: str, body: ReviewAction, db: Session = Depends(g
     if t.status != "waiting_review":
         raise HTTPException(400, f"Task is '{t.status}', not 'waiting_review'")
 
+    job_id = t.job_id
     t.status = "approved"
     t.reviewer_comment = body.comment
     db.commit()
 
-    # Make sure the parent job is still running so orchestrator picks up downstream tasks
-    job = db.query(Job).filter(Job.id == t.job_id).first()
-    if job and job.status not in ("done", "error", "stopped"):
-        job.status = "running"
-        db.commit()
+    # Перевіряємо чи це був останній крок — якщо так, закриваємо job
+    just_done = _check_job_completion(db, job_id)
+
+    if just_done:
+        # Job завершено → авто-постинг в Telegram (якщо налаштовано)
+        asyncio.create_task(_try_telegram_autopost(job_id))
+        await manager.broadcast({"type": "job_update", "job_id": job_id, "status": "done"})
+    else:
+        # Є downstream tasks — реактивуємо job для оркестратора
+        job = db.query(Job).filter(Job.id == job_id).first()
+        if job and job.status not in ("done", "error", "stopped"):
+            job.status = "running"
+            db.commit()
 
     await manager.broadcast({
         "type": "task_update",
         "task_id": task_id,
-        "job_id": t.job_id,
+        "job_id": job_id,
         "status": "approved",
     })
     return _serialize(t, db)
@@ -100,19 +110,20 @@ async def reject_task(task_id: str, body: ReviewAction, db: Session = Depends(ge
     if t.status != "waiting_review":
         raise HTTPException(400, f"Task is '{t.status}', not 'waiting_review'")
 
-    t.status = "rejected"
-    t.reviewer_comment = body.comment
-    # Reset to pending so it can be re-dispatched
+    job_id = t.job_id
+    # Скидаємо в pending → агент виконає ще раз
     t.status = "pending"
     t.output_data = None
-    t.error_message = f"Rejected: {body.comment}"
+    t.error_message = f"Відхилено: {body.comment}" if body.comment else "Відхилено"
+    t.reviewer_comment = body.comment
     if t.agent_id:
         ag = db.query(Agent).filter(Agent.id == t.agent_id).first()
         if ag and ag.status == "busy":
             ag.status = "idle"
     db.commit()
 
-    job = db.query(Job).filter(Job.id == t.job_id).first()
+    # Реактивуємо job
+    job = db.query(Job).filter(Job.id == job_id).first()
     if job and job.status not in ("done", "error", "stopped"):
         job.status = "running"
         db.commit()
@@ -120,7 +131,7 @@ async def reject_task(task_id: str, body: ReviewAction, db: Session = Depends(ge
     await manager.broadcast({
         "type": "task_update",
         "task_id": task_id,
-        "job_id": t.job_id,
+        "job_id": job_id,
         "status": "pending",
     })
     return _serialize(t, db)

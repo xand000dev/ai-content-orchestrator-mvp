@@ -6,7 +6,6 @@
       {
         "id": "dab81c994639e754",
         "type": "tabs",
-        "dimension": 27.98329355608592,
         "children": [
           {
             "id": "a30c0c529e665876",
@@ -21,14 +20,7 @@
               "icon": "lucide-file",
               "title": "_Index"
             }
-          }
-        ]
-      },
-      {
-        "id": "1689a6d5da214a8e",
-        "type": "tabs",
-        "dimension": 72.01670644391407,
-        "children": [
+          },
           {
             "id": "b8bee92def1dd742",
             "type": "leaf",
@@ -39,7 +31,8 @@
               "title": "Граф"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -96,7 +89,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "aef7dfa3c98123bd",
@@ -112,7 +106,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "AI Orchestrator/_Index.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -122,7 +115,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Зворотні посилання для _Index"
+              "title": "Зворотні посилання"
             }
           },
           {
@@ -131,12 +124,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "AI Orchestrator/_Index.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Вихідні посилання з _Index"
+              "title": "Вихідні посилання"
             }
           },
           {
@@ -174,13 +166,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "AI Orchestrator/_Index.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Вміст _Index"
+              "title": "Вміст"
             }
           }
         ]
@@ -201,34 +192,34 @@
       "bases:Створити нову базу": false
     }
   },
-  "active": "a30c0c529e665876",
+  "active": "b8bee92def1dd742",
   "lastOpenFiles": [
-    "AI Orchestrator/Topics/порівняння.md",
-    "AI Orchestrator/Topics/gpt-4o.md",
-    "AI Orchestrator/Topics/claude.md",
-    "AI Orchestrator/Jobs/2026-04-04 Claude 3.5 vs GPT-4o яку модель обрати для щоденної роботи у.md",
-    "Topics.md",
     "AI Orchestrator/_Index.md",
-    "AI Orchestrator/Topics/клієнт.md",
-    "AI Orchestrator/Topics/переговори.md",
-    "AI Orchestrator/Topics/ставка.md",
-    "AI Orchestrator/Jobs/2026-04-04 Як підняти ставку клієнту якого маєш вже рік.md",
-    "AI Orchestrator/Topics/платформи.md",
-    "AI Orchestrator/Topics/fiverr.md",
-    "AI Orchestrator/Topics/upwork.md",
-    "AI Orchestrator/Jobs/2026-04-04 Upwork vs Fiverr vs своя аудиторія — де фрілансеру легше ста.md",
-    "AI Orchestrator/Topics/AI контент.md",
-    "AI Orchestrator/Topics/копірайтер.md",
-    "AI Orchestrator/Topics/ChatGPT.md",
-    "AI Orchestrator/Jobs/2026-04-04 ChatGPT vs реальний копірайтер чесне порівняння у 2025.md",
-    "AI Orchestrator/Pipelines/Telegram Сторітелінг.md",
-    "AI Orchestrator/Topics/листи.md",
-    "AI Orchestrator/Topics/клієнти.md",
-    "AI Orchestrator/Topics/кар'єра.md",
-    "AI Orchestrator/Jobs/2026-04-04 Як один лист змінив мою кар'єру фрілансера.md",
-    "AI Orchestrator/Pipelines/Telegram Пост з перевіркою.md",
-    "AI Orchestrator/Topics/канал.md",
-    "AI Orchestrator/Topics/заробіток.md",
+    "Topics.md",
+    "AI Orchestrator/Topics/кейси.md",
+    "AI Orchestrator/Topics/початок.md",
+    "AI Orchestrator/Topics/портфоліо.md",
+    "AI Orchestrator/Jobs/2026-04-04 Портфоліо без кейсів що показати клієнту коли ти новачок.md",
+    "AI Orchestrator/Topics/інструкція.md",
+    "AI Orchestrator/Topics/промпт.md",
+    "AI Orchestrator/Jobs/2026-04-04 Промпт-інженерія за 10 хвилин головні прийоми що одразу дают.md",
+    "AI Orchestrator/Topics/майбутнє.md",
+    "AI Orchestrator/Topics/AI.md",
+    "AI Orchestrator/Jobs/2026-04-04 Як AI змінить ринок фрілансу за наступні 2 роки — чесний про.md",
+    "AI Orchestrator/Topics/розробка агентів.md",
+    "AI Orchestrator/Topics/enterprise AI.md",
+    "AI Orchestrator/Topics/бенчмарк AI.md",
+    "AI Orchestrator/Topics/порівняння фреймворків.md",
+    "AI Orchestrator/Topics/мульти-агентні системи.md",
+    "AI Orchestrator/Jobs/2026-04-04 Порівняння LangGraph, AutoGen та CrewAI для enterprise-сцена.md",
+    "AI Orchestrator/Topics/масштабування.md",
+    "AI Orchestrator/Topics/метрики ефективності.md",
+    "AI Orchestrator/Topics/CrewAI.md",
+    "AI Orchestrator/Topics/автоматизація підтримки.md",
+    "AI Orchestrator/Topics/AI agents.md",
+    "AI Orchestrator/Jobs/2026-04-04 Кейс заміни скриптової автоматизації на мульти-агентні систе.md",
+    "AI Orchestrator/Topics/AI орієнтований підхід.md",
+    "AI Orchestrator/Topics/тренди ринку праці.md",
     "AI Orchestrator/Topics",
     "AI Orchestrator/Published",
     "AI Orchestrator/Pipelines",

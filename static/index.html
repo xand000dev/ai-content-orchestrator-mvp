@@ -1766,12 +1766,21 @@ function app() {
       if (r) { await this.fetchAutobots(); this.toast(r.active ? '🤖 Автобот активовано!' : 'Автобот зупинено', r.active ? 'success' : 'warn'); }
     },
     async runAutobotNow(id) {
-      const bot = this.autobots.find(b => b.id === id);
-      if (bot) bot._running = true;
+      // Replace array item to guarantee Alpine.js reactivity on _running flag
+      this.autobots = this.autobots.map(b => b.id === id ? { ...b, _running: true } : b);
+      this.toast('⏳ Запускаю цикл...', 'warn');
       const r = await this.post(`/api/auto-managers/${id}/run`, {});
-      if (r?.ok) this.toast('🤖 Цикл запущено — результат прийде через WebSocket...');
-      // _running cleared when auto_manager_decision WS event arrives, or after 120s fallback
-      setTimeout(async () => { if (bot) bot._running = false; await this.fetchAutobots(); }, 120000);
+      if (r?.ok) {
+        this.toast('🤖 Цикл запущено — чекай рішення у Live feed...');
+      } else {
+        // Request failed — clear spinner immediately
+        this.autobots = this.autobots.map(b => b.id === id ? { ...b, _running: false } : b);
+      }
+      // Fallback: clear spinner after 120s if WS event never arrives
+      setTimeout(() => {
+        this.autobots = this.autobots.map(b => b.id === id ? { ...b, _running: false } : b);
+        this.fetchAutobots();
+      }, 120000);
     },
     async deleteAutobot(id) {
       if (!confirm('Видалити автобота?')) return;
@@ -1900,16 +1909,21 @@ function app() {
       catch { return []; }
     },
     async post(url, body) {
-      const r = await fetch(url, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!r.ok) {
-        const e = await r.json().catch(() => ({}));
-        this.toast(e.detail || 'Помилка запиту', 'error');
+      try {
+        const r = await fetch(url, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) {
+          const e = await r.json().catch(() => ({}));
+          this.toast(e.detail || `Помилка ${r.status}`, 'error');
+          return null;
+        }
+        return r.json();
+      } catch (err) {
+        this.toast('Сервер недоступний: ' + err.message, 'error');
         return null;
       }
-      return r.json();
     },
     async put(url, body) {
       const r = await fetch(url, {
@@ -1962,9 +1976,8 @@ function app() {
             time: new Date().toLocaleTimeString('uk', { hour:'2-digit', minute:'2-digit' }),
           });
           if (this.autobotLog.length > 20) this.autobotLog.shift();
-          // Clear spinner on the bot that just finished
-          const finishedBot = this.autobots.find(b => b.id === msg.manager_id);
-          if (finishedBot) finishedBot._running = false;
+          // Clear spinner via array replace (Alpine.js reactivity)
+          this.autobots = this.autobots.map(b => b.id === msg.manager_id ? { ...b, _running: false } : b);
           this.fetchAutobots(); this.fetchJobs(); this.fetchStrategies();
           const launched = (msg.actions || []).filter(a => ['launch_topic','create_job'].includes(a.type) && !a.skipped && !a.error).length;
           const generated = (msg.actions || []).filter(a => a.type === 'generate_topics').reduce((s, a) => s + (a.generated || 0), 0);

@@ -12,7 +12,7 @@ load_dotenv()
 
 from database import Base, engine
 from orchestrator import manager, orchestrator_loop
-from routers import agents, jobs, pipelines, platforms, tasks
+from routers import agents, jobs, pipelines, platforms, tasks, schedules, strategies, auto_managers
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,6 +27,9 @@ app.include_router(pipelines.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(platforms.router, prefix="/api")
+app.include_router(schedules.router, prefix="/api")
+app.include_router(strategies.router, prefix="/api")
+app.include_router(auto_managers.router, prefix="/api")
 
 # ── Static files ──────────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -35,6 +38,79 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
+
+
+@app.get("/api/telegram/test")
+async def telegram_test(channel_id: str, text: str = "🤖 Тест підключення від AI Orchestrator — все працює!"):
+    """Відправити тестове повідомлення. Використовує TELEGRAM_BOT_TOKEN з .env"""
+    from telegram_bot import send_message, test_connection
+    conn = await test_connection(channel_id)
+    if not conn["ok"]:
+        return {"ok": False, "error": conn.get("error"), "tip": "Перевір TELEGRAM_BOT_TOKEN у .env"}
+    ok = await send_message(channel_id, text)
+    return {
+        "ok": ok,
+        "bot": conn.get("bot_name"),
+        "channel": channel_id,
+        "error": None if ok else "Не вдалось надіслати. Перевір чи бот є адміністратором каналу.",
+    }
+
+
+@app.post("/api/telegram/send-content")
+async def send_content_direct(channel_id: str, job_id: str):
+    """Надіслати контент конкретної задачі напряму в канал (для ручного тесту)."""
+    from orchestrator import send_job_to_telegram
+    ok = await send_job_to_telegram(job_id, channel_id)
+    return {"ok": ok, "channel": channel_id, "job_id": job_id}
+
+
+@app.get("/api/obsidian/status")
+async def obsidian_status():
+    """Статус інтеграції з Obsidian."""
+    from obsidian_writer import get_writer
+    writer = get_writer()
+    vault  = os.getenv("OBSIDIAN_VAULT_PATH", "")
+    notes  = 0
+    if writer.enabled and writer.base:
+        notes = sum(1 for _ in writer.base.rglob("*.md"))
+    return {
+        "enabled":    writer.enabled,
+        "vault_path": vault or None,
+        "notes_count": notes,
+        "tip": None if writer.enabled else "Додай OBSIDIAN_VAULT_PATH=C:/path/to/vault у .env",
+    }
+
+
+@app.post("/api/obsidian/sync-all")
+async def obsidian_sync_all():
+    """Синхронізувати всі завершені jobs у Obsidian vault."""
+    from obsidian_writer import get_writer
+    from database import SessionLocal
+    writer = get_writer()
+    if not writer.enabled:
+        return {"ok": False, "error": "OBSIDIAN_VAULT_PATH не вказано"}
+    db = SessionLocal()
+    try:
+        count = writer.sync_all_jobs(db)
+    finally:
+        db.close()
+    return {"ok": True, "synced": count}
+
+
+@app.get("/api/bot-control/status")
+async def bot_control_status():
+    """Статус Telegram Bot Control."""
+    admin_chat = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "")
+    bot_control = os.getenv("TELEGRAM_BOT_CONTROL", "").lower() in ("true", "1", "yes")
+    tg_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    active = bool(admin_chat and bot_control and tg_token)
+    return {
+        "active": active,
+        "admin_chat_id": admin_chat or None,
+        "bot_control_env": bot_control,
+        "token_set": bool(tg_token),
+        "tip": None if active else "Додай TELEGRAM_ADMIN_CHAT_ID та TELEGRAM_BOT_CONTROL=true у .env",
+    }
 
 
 @app.get("/api/health")
@@ -65,6 +141,12 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(orchestrator_loop())
+    # Telegram Bot Control — polling для approve/reject прямо з телефону
+    admin_chat = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "")
+    bot_control = os.getenv("TELEGRAM_BOT_CONTROL", "").lower() in ("true", "1", "yes")
+    if admin_chat and bot_control:
+        from telegram_bot import start_bot_polling
+        asyncio.create_task(start_bot_polling(admin_chat))
 
 
 if __name__ == "__main__":

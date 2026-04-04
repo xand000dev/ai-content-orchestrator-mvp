@@ -93,6 +93,82 @@ class Task(Base):
     completed_at = Column(DateTime, nullable=True)
 
 
+class Schedule(Base):
+    __tablename__ = "schedules"
+
+    id = Column(String, primary_key=True, default=new_id)
+    name = Column(String, nullable=False)
+    pipeline_id = Column(String, ForeignKey("pipelines.id"), nullable=False)
+    platform_id = Column(String, nullable=True)
+    # Cron expression, e.g. "0 9 * * 1" = every Monday at 9:00 UTC
+    cron_expr = Column(String, nullable=False, default="0 9 * * *")
+    # Topic template — supports {date} and {weekday} placeholders
+    topic_template = Column(Text, default="")
+    keywords = Column(Text, default="")
+    extra = Column(Text, default="")
+    active = Column(Boolean, default=True)
+    last_run = Column(DateTime, nullable=True)
+    next_run = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Strategy(Base):
+    __tablename__ = "strategies"
+
+    id = Column(String, primary_key=True, default=new_id)
+    name = Column(String, nullable=False)
+    niche = Column(String, default="")
+    audience = Column(Text, default="")
+    # JSON list of content pillars, e.g. ["поради","кейси","помилки"]
+    content_pillars = Column(Text, default="[]")
+    tone = Column(String, default="")
+    pipeline_id = Column(String, ForeignKey("pipelines.id"), nullable=True)
+    platform_id = Column(String, nullable=True)
+    frequency_per_week = Column(Integer, default=3)
+    auto_approve = Column(Boolean, default=False)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TopicSuggestion(Base):
+    __tablename__ = "topic_suggestions"
+
+    id = Column(String, primary_key=True, default=new_id)
+    strategy_id = Column(String, ForeignKey("strategies.id"), nullable=False)
+    topic = Column(Text, nullable=False)
+    keywords = Column(Text, default="")
+    extra = Column(Text, default="")
+    # pending | approved | rejected | launched
+    status = Column(String, default="pending")
+    job_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AutoManager(Base):
+    __tablename__ = "auto_managers"
+
+    id = Column(String, primary_key=True, default=new_id)
+    name = Column(String, nullable=False)
+    # High-level goal, e.g. "Keep 2-3 posts/day active across the freelance channel"
+    goal = Column(Text, default="")
+    # JSON list of strategy IDs this manager controls (empty = all active strategies)
+    strategy_ids = Column(Text, default="[]")
+    model = Column(String, default="qwen/qwen3.6-plus:free")
+    # How often to run the decision cycle (minutes)
+    check_interval_minutes = Column(Integer, default=30)
+    # Max jobs to launch per single decision cycle
+    max_jobs_per_run = Column(Integer, default=2)
+    # Don't launch new jobs if this many are already running
+    max_concurrent_jobs = Column(Integer, default=3)
+    active = Column(Boolean, default=False)
+    last_run = Column(DateTime, nullable=True)
+    # AI reasoning text from the last decision
+    last_thinking = Column(Text, nullable=True)
+    # JSON list of actions taken: [{"type":..., "topic":..., "result":...}]
+    last_actions = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Platform(Base):
     __tablename__ = "platforms"
 

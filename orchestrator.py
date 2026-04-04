@@ -134,7 +134,11 @@ def _check_job_completion(db, job_id: str) -> bool:
             job.completed_at = datetime.utcnow()
             db.commit()
             logger.info("Job %s → %s", job_id[:8], job.status)
-            return job.status == "done"
+            just_done = job.status == "done"
+            if just_done:
+                from obsidian_writer import get_writer
+                get_writer().write_job_note(db, job_id)
+            return just_done
     return False
 
 
@@ -177,6 +181,8 @@ async def _try_telegram_autopost(job_id: str):
         ok = await send_message(channel_id, content, token=bot_token or None)
         if ok:
             logger.info("✅ Auto-posted job %s to Telegram %s", job_id[:8], channel_id)
+            from obsidian_writer import get_writer
+            get_writer().write_published_note(job_id, channel_id, content)
             await manager.broadcast({
                 "type": "telegram_posted",
                 "job_id": job_id,
@@ -278,6 +284,16 @@ async def _run_task(task_id: str):
             "preview": result_text[:200],
         })
 
+        # Telegram Bot Control — надіслати review-сповіщення адміну
+        if task.status == "waiting_review":
+            admin_chat = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "")
+            bot_control = os.getenv("TELEGRAM_BOT_CONTROL", "").lower() in ("true", "1", "yes")
+            if admin_chat and bot_control:
+                from telegram_bot import send_review_notification
+                asyncio.create_task(send_review_notification(
+                    admin_chat, task_id, task.step_name, result_text
+                ))
+
         if task.status == "done":
             just_done = _check_job_completion(db, job_id)
             if just_done:
@@ -356,8 +372,115 @@ async def _tick():
         db.close()
 
 
+# ─────────────────────────── Scheduler ──────────────────────────────────────
+
+async def _fire_schedule(db, sched) -> "Job | None":
+    """Створити і запустити Job з розкладу. Повертає Job або None."""
+    from database import Pipeline, Task, Job as JobModel, new_id as _new_id
+
+    pipeline = db.query(Pipeline).filter(Pipeline.id == sched.pipeline_id).first()
+    if not pipeline:
+        logger.warning("Schedule %s: pipeline %s not found", sched.name, sched.pipeline_id[:8])
+        return None
+
+    steps = json.loads(pipeline.steps or "[]")
+    if not steps:
+        logger.warning("Schedule %s: pipeline has no steps", sched.name)
+        return None
+
+    # Замінити плейсхолдери у темі
+    now = datetime.utcnow()
+    weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
+    topic = (sched.topic_template or f"Автопост {now.strftime('%d.%m.%Y')}")
+    topic = topic.replace("{date}", now.strftime("%d.%m.%Y"))
+    topic = topic.replace("{weekday}", weekdays[now.weekday()])
+    topic = topic.replace("{month}", now.strftime("%B"))
+
+    initial_input = json.dumps({
+        "topic": topic,
+        "keywords": sched.keywords or "",
+        "platform_id": sched.platform_id or "",
+        "extra": sched.extra or "",
+        "schedule_id": sched.id,
+    })
+
+    job = JobModel(
+        id=_new_id(),
+        pipeline_id=sched.pipeline_id,
+        status="running",
+        initial_input=initial_input,
+        started_at=now,
+    )
+    db.add(job)
+
+    for step in steps:
+        task = Task(
+            id=_new_id(),
+            job_id=job.id,
+            step_name=step["step_name"],
+            agent_type=step["agent_type"],
+            depends_on=json.dumps(step.get("depends_on", [])),
+            review_required=step.get("review_required", False),
+            status="pending",
+        )
+        db.add(task)
+
+    db.commit()
+    logger.info("⏰ Schedule '%s' fired → Job %s | topic: %s", sched.name, job.id[:8], topic[:50])
+    return job
+
+
+async def _tick_schedules():
+    """Перевірити розклади і запустити прострочені. Викликається раз на хвилину."""
+    from database import Schedule
+    try:
+        from croniter import croniter
+    except ImportError:
+        logger.warning("croniter не встановлено — pip install croniter")
+        return
+
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        active = db.query(Schedule).filter(Schedule.active == True).all()
+        for sched in active:
+            # Якщо next_run ще не прораховано — рахуємо
+            if not sched.next_run:
+                sched.next_run = croniter(sched.cron_expr, now).get_next(datetime)
+                db.commit()
+                continue
+
+            if sched.next_run <= now:
+                job = await _fire_schedule(db, sched)
+                sched.last_run = now
+                sched.next_run = croniter(sched.cron_expr, now).get_next(datetime)
+                db.commit()
+
+                if job:
+                    await manager.broadcast({
+                        "type": "schedule_fired",
+                        "schedule_id": sched.id,
+                        "schedule_name": sched.name,
+                        "job_id": job.id,
+                    })
+                    await manager.broadcast({"type": "job_update", "job_id": job.id, "status": "running"})
+
+    except Exception:
+        logger.exception("Schedule tick error")
+    finally:
+        db.close()
+
+
 async def orchestrator_loop():
     logger.info("🚀 Orchestrator started")
+    tick_count = 0
     while True:
         await _tick()
+        tick_count += 1
+        # Кожні 30 тіків = ~60 секунд → перевіряємо розклади
+        if tick_count >= 30:
+            await _tick_schedules()
+            from auto_manager import tick_auto_managers
+            await tick_auto_managers()
+            tick_count = 0
         await asyncio.sleep(2)

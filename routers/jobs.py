@@ -173,8 +173,35 @@ async def send_telegram(job_id: str, db: Session = Depends(get_db)):
     if not ok:
         raise HTTPException(500, "Не вдалося відправити повідомлення у Telegram. Перевір токен та права бота.")
 
+    # Записати публікацію у Obsidian
+    from orchestrator import _pick_final_content
+    from obsidian_writer import get_writer
+    from database import SessionLocal
+    _db = SessionLocal()
+    try:
+        content = _pick_final_content(_db, job_id) or ""
+        get_writer().write_published_note(job_id, channel_id, content)
+    finally:
+        _db.close()
+
     await manager.broadcast({"type": "telegram_posted", "job_id": job_id, "channel": channel_id})
     return {"ok": True, "channel": channel_id}
+
+
+@router.post("/{job_id}/sync-obsidian")
+def sync_job_obsidian(job_id: str, db: Session = Depends(get_db)):
+    """Вручну синхронізувати завершений Job у Obsidian vault."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if job.status != "done":
+        raise HTTPException(400, f"Job ще не завершено (status={job.status})")
+    from obsidian_writer import get_writer
+    writer = get_writer()
+    if not writer.enabled:
+        raise HTTPException(400, "OBSIDIAN_VAULT_PATH не вказано у .env")
+    path = writer.write_job_note(db, job_id)
+    return {"ok": bool(path), "note_path": path}
 
 
 @router.delete("/{job_id}", status_code=204)

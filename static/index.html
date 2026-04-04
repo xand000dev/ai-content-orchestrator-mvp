@@ -9,902 +9,1882 @@
   <script>tailwind.config = { darkMode: 'class' };</script>
   <style>
     [x-cloak] { display: none !important; }
-    .status-idle            { @apply bg-slate-600 text-slate-200; }
-    .status-busy            { @apply bg-blue-600 text-white; }
-    .status-error           { @apply bg-red-600 text-white; }
-    .status-offline         { @apply bg-gray-700 text-gray-300; }
-    .status-pending         { @apply bg-slate-600 text-slate-200; }
-    .status-queued          { @apply bg-indigo-600 text-white; }
-    .status-running         { @apply bg-blue-600 text-white animate-pulse; }
-    .status-waiting_review  { @apply bg-yellow-500 text-black; }
-    .status-approved        { @apply bg-green-600 text-white; }
-    .status-rejected        { @apply bg-red-500 text-white; }
-    .status-done            { @apply bg-emerald-600 text-white; }
-    .status-stopped         { @apply bg-gray-600 text-white; }
-    textarea { resize: vertical; }
+
+    body { background: #07090f; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2d3f52; }
+
+    /* Status badges */
+    .sb { display:inline-flex; align-items:center; padding:1px 9px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.03em; }
+    .sb-idle           { background:#0f172a; color:#64748b; border:1px solid #1e293b; }
+    .sb-busy           { background:#0c1a35; color:#60a5fa; border:1px solid #1e3a6e; }
+    .sb-error          { background:#1c0a0a; color:#f87171; border:1px solid #450a0a; }
+    .sb-offline        { background:#111; color:#4b5563; border:1px solid #1f2937; }
+    .sb-pending        { background:#0f172a; color:#64748b; border:1px solid #1e293b; }
+    .sb-queued         { background:#13104a; color:#a5b4fc; border:1px solid #2e29a0; }
+    .sb-running        { background:#0c1a35; color:#38bdf8; border:1px solid #1e3a6e; animation:sbpulse 1.8s ease-in-out infinite; }
+    .sb-waiting_review { background:#2a1a00; color:#fbbf24; border:1px solid #78350f; }
+    .sb-approved       { background:#052010; color:#34d399; border:1px solid #064e2e; }
+    .sb-rejected       { background:#1c0a0a; color:#f87171; border:1px solid #450a0a; }
+    .sb-done           { background:#052010; color:#4ade80; border:1px solid #064e2e; }
+    .sb-stopped        { background:#111; color:#4b5563; border:1px solid #1f2937; }
+
+    @keyframes sbpulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+    @keyframes ping { 75%,100% { transform:scale(2); opacity:0; } }
+
+    /* Card */
+    .card { background:#0d1117; border:1px solid #1a2332; border-radius:12px; }
+    .card-interactive { transition:border-color .15s,box-shadow .15s; cursor:pointer; }
+    .card-interactive:hover { border-color:#2d3f52; box-shadow:0 0 0 1px rgba(99,102,241,.12); }
+
+    /* Sidebar active */
+    .nav-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; font-size:13.5px; font-weight:500; color:#64748b; transition:all .15s; border-left:2px solid transparent; }
+    .nav-item:hover { background:#0d1420; color:#94a3b8; }
+    .nav-item.active { background:linear-gradient(90deg,rgba(99,102,241,.12),rgba(99,102,241,.04)); color:#a5b4fc; border-left-color:#6366f1; }
+
+    /* Button variants */
+    .btn-primary { background:linear-gradient(135deg,#4f46e5,#6366f1); color:#fff; padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; transition:opacity .15s; }
+    .btn-primary:hover { opacity:.9; }
+    .btn-primary:disabled { opacity:.4; cursor:not-allowed; }
+    .btn-ghost { background:#0d1117; color:#94a3b8; border:1px solid #1a2332; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:500; transition:all .15s; }
+    .btn-ghost:hover { background:#131b26; color:#e2e8f0; border-color:#2d3f52; }
+    .btn-danger { background:#1c0a0a; color:#f87171; border:1px solid #450a0a; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:500; transition:all .15s; }
+    .btn-danger:hover { background:#2a0f0f; color:#fca5a5; }
+    .btn-success { background:#052010; color:#34d399; border:1px solid #064e2e; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:500; transition:all .15s; }
+    .btn-success:hover { background:#0a3018; color:#6ee7b7; }
+    .btn-sky { background:#062030; color:#38bdf8; border:1px solid #0c4a6e; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:500; transition:all .15s; }
+    .btn-sky:hover { background:#0a2d40; }
+
+    /* Form controls */
+    .field { background:#0d1117; border:1px solid #1a2332; color:#e2e8f0; border-radius:8px; padding:8px 12px; font-size:13px; width:100%; outline:none; transition:border-color .15s; }
+    .field:focus { border-color:#4f46e5; box-shadow:0 0 0 2px rgba(79,70,229,.15); }
+    .field::placeholder { color:#334155; }
+    select.field option { background:#0d1117; }
+    textarea.field { resize:vertical; }
+
+    /* Toast */
+    @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes fadeOut { from{opacity:1} to{opacity:0;transform:translateX(20px)} }
+    .toast-enter { animation:slideIn .25s ease; }
+    .toast-leave { animation:fadeOut .25s ease forwards; }
+
+    /* Progress */
+    .progress-bar { background:#1a2332; border-radius:4px; overflow:hidden; height:4px; }
+    .progress-fill { background:linear-gradient(90deg,#4f46e5,#818cf8); height:100%; transition:width .4s ease; border-radius:4px; }
+
+    /* Agent activity dot */
+    .dot-idle { background:#334155; }
+    .dot-busy { background:#3b82f6; box-shadow:0 0 6px #3b82f6; animation:sbpulse 1.5s infinite; }
+    .dot-error { background:#ef4444; }
+
+    /* Line clamp */
+    .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .line-clamp-3 { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+
+    /* Divider */
+    .divider { border:none; border-top:1px solid #1a2332; margin:16px 0; }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen" x-data="app()" x-init="init()">
+<body x-data="app()" x-init="init()">
 
 <div class="flex h-screen overflow-hidden">
 
-<!-- ═══════════ САЙДБАР ═══════════ -->
-  <aside class="w-56 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
-    <div class="p-4 border-b border-slate-800">
-      <div class="text-lg font-bold text-white">⚡ Оркестратор</div>
-      <div class="text-xs text-slate-500 mt-0.5">AI Контент-завод</div>
-    </div>
+<!-- ═══════════════════════════════ SIDEBAR ═══════════════════════════════ -->
+<aside class="w-56 flex flex-col shrink-0" style="background:#09101a;border-right:1px solid #1a2332;">
 
-    <nav class="flex-1 p-3 space-y-1">
-      <template x-for="tab in tabs" :key="tab.id">
-        <button
-          @click="currentTab = tab.id"
-          :class="currentTab === tab.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'"
-          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-          <span x-text="tab.icon"></span>
-          <span x-text="tab.label"></span>
-          <span x-show="tab.id === 'review' && reviewCount > 0"
-            class="ml-auto bg-yellow-500 text-black text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold"
-            x-text="reviewCount"></span>
-        </button>
-      </template>
-    </nav>
-
-    <div class="p-3 border-t border-slate-800">
-      <div class="flex items-center gap-2">
-        <div :class="wsConnected ? 'bg-emerald-500' : 'bg-red-500'" class="w-2 h-2 rounded-full"></div>
-        <span class="text-xs text-slate-500" x-text="wsConnected ? 'Онлайн' : 'Офлайн'"></span>
-      </div>
-    </div>
-  </aside>
-
-<!-- ═══════════ ГОЛОВНИЙ КОНТЕНТ ═══════════ -->
-  <main class="flex-1 overflow-auto">
-
-<!-- ─── ДАШБОРД ─── -->
-    <div x-show="currentTab === 'dashboard'" x-cloak class="p-6 space-y-6">
-      <h1 class="text-2xl font-bold">Дашборд</h1>
-
-      <!-- Статистика -->
-      <div class="grid grid-cols-4 gap-4">
-        <div class="bg-slate-800 rounded-xl p-4">
-          <div class="text-2xl font-bold text-blue-400" x-text="jobs.filter(j=>j.status==='running').length"></div>
-          <div class="text-xs text-slate-400 mt-1">Активних задач</div>
-        </div>
-        <div class="bg-slate-800 rounded-xl p-4">
-          <div class="text-2xl font-bold text-yellow-400" x-text="reviewCount"></div>
-          <div class="text-xs text-slate-400 mt-1">Очікують перевірки</div>
-        </div>
-        <div class="bg-slate-800 rounded-xl p-4">
-          <div class="text-2xl font-bold text-emerald-400"
-            x-text="agents.filter(a=>a.status==='busy').length + '/' + agents.length"></div>
-          <div class="text-xs text-slate-400 mt-1">Агентів зайнято/всього</div>
-        </div>
-        <div class="bg-slate-800 rounded-xl p-4">
-          <div class="text-2xl font-bold text-slate-300" x-text="jobs.filter(j=>j.status==='done').length"></div>
-          <div class="text-xs text-slate-400 mt-1">Завершено задач</div>
-        </div>
-      </div>
-
-      <!-- Картки агентів -->
+  <!-- Brand -->
+  <div class="px-4 py-5" style="border-bottom:1px solid #1a2332;">
+    <div class="flex items-center gap-2.5">
+      <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">⚡</div>
       <div>
-        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Агенти</h2>
-        <div x-show="agents.length === 0" class="text-slate-500 text-sm">
-          Немає агентів. <button @click="currentTab='agents'" class="text-indigo-400 hover:underline">Додати →</button>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          <template x-for="agent in agents" :key="agent.id">
-            <div @click="openAgentDetail(agent)"
-              class="bg-slate-800 rounded-xl p-4 border border-slate-700 cursor-pointer hover:border-indigo-500 transition-colors">
-              <div class="flex items-start justify-between">
-                <div>
-                  <div class="font-semibold text-sm" x-text="agent.name"></div>
-                  <div class="text-xs text-slate-400" x-text="agentTypeLabel(agent.type)"></div>
-                </div>
-                <span :class="'status-' + agent.status"
-                  class="text-xs px-2 py-0.5 rounded-full font-medium"
-                  x-text="sl(agent.status)"></span>
-              </div>
-              <div class="mt-2 text-xs text-slate-500 truncate" x-text="agent.model.split('/')[1] || agent.model"></div>
+        <div style="font-weight:700;font-size:14px;color:#f1f5f9;">AI Оркестратор</div>
+        <div style="font-size:10px;color:#334155;margin-top:1px;">Контент-завод</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
+    <template x-for="tab in tabs" :key="tab.id">
+      <button
+        @click="currentTab = tab.id"
+        :class="['nav-item w-full', currentTab === tab.id ? 'active' : '']">
+        <span style="font-size:15px;width:18px;text-align:center;" x-text="tab.icon"></span>
+        <span x-text="tab.label"></span>
+        <span x-show="tab.id === 'review' && reviewCount > 0"
+          class="ml-auto flex items-center justify-center font-bold"
+          style="background:#92400e;color:#fbbf24;border-radius:999px;width:18px;height:18px;font-size:10px;"
+          x-text="reviewCount"></span>
+      </button>
+    </template>
+  </nav>
+
+  <!-- Footer -->
+  <div class="p-3" style="border-top:1px solid #1a2332;">
+    <div class="flex items-center gap-2 px-3 py-2 rounded-lg" style="background:#0d1117;">
+      <div class="w-2 h-2 rounded-full transition-colors" :style="wsConnected ? 'background:#22c55e;box-shadow:0 0 6px #22c55e' : 'background:#ef4444'"></div>
+      <span style="font-size:12px;color:#475569;" x-text="wsConnected ? 'Real-time підключено' : 'Офлайн'"></span>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════ MAIN ═══════════════════════════════ -->
+<div class="flex-1 flex flex-col overflow-hidden">
+
+  <!-- Top bar -->
+  <header style="background:#09101a;border-bottom:1px solid #1a2332;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div>
+      <div style="font-size:16px;font-weight:700;color:#f1f5f9;" x-text="tabs.find(t=>t.id===currentTab)?.fullLabel || ''"></div>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/api/health" target="_blank" class="btn-ghost" style="font-size:12px;padding:5px 12px;">🔧 Статус</a>
+      <button x-show="currentTab === 'newjob'" @click="showNewJobForm = !showNewJobForm"
+        class="btn-primary" style="font-size:13px;">＋ Нова задача</button>
+      <button x-show="currentTab === 'agents'" @click="openAgentModal()"
+        class="btn-primary">＋ Агент</button>
+      <button x-show="currentTab === 'pipelines'" @click="openPipelineModal()"
+        class="btn-primary">＋ Пайплайн</button>
+      <button x-show="currentTab === 'platforms'" @click="openPlatformModal()"
+        class="btn-primary">＋ Платформа</button>
+      <button x-show="currentTab === 'schedule'" @click="openScheduleForm()"
+        class="btn-primary">＋ Розклад</button>
+      <button x-show="currentTab === 'autobot'" @click="openAutobotModal()"
+        class="btn-primary">＋ Автобот</button>
+      <button x-show="currentTab === 'strategy'" @click="openStrategyModal()"
+        class="btn-primary">＋ Стратегія</button>
+    </div>
+  </header>
+
+  <main class="flex-1 overflow-auto p-6">
+
+<!-- ─────────────────────── DASHBOARD ─────────────────────── -->
+<div x-show="currentTab === 'dashboard'" x-cloak class="space-y-6">
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="card p-4">
+      <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Активні задачі</div>
+      <div style="font-size:28px;font-weight:800;color:#60a5fa;margin-top:6px;" x-text="jobs.filter(j=>j.status==='running').length"></div>
+    </div>
+    <div class="card p-4">
+      <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">На перевірці</div>
+      <div style="font-size:28px;font-weight:800;color:#fbbf24;margin-top:6px;" x-text="reviewCount"></div>
+    </div>
+    <div class="card p-4">
+      <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Агентів зайнято</div>
+      <div style="font-size:28px;font-weight:800;color:#a5b4fc;margin-top:6px;"
+        x-text="agents.filter(a=>a.status==='busy').length + '/' + agents.length"></div>
+    </div>
+    <div class="card p-4">
+      <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;">Завершено</div>
+      <div style="font-size:28px;font-weight:800;color:#4ade80;margin-top:6px;" x-text="jobs.filter(j=>j.status==='done').length"></div>
+    </div>
+  </div>
+
+  <!-- Integrations status bar -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+    <!-- Telegram Bot Control -->
+    <div class="card p-3 flex items-center gap-3" style="border-color: #1a2332;">
+      <div class="w-2 h-2 rounded-full shrink-0"
+        :style="botControl.active ? 'background:#22c55e;box-shadow:0 0 6px #22c55e' : 'background:#475569'"></div>
+      <div class="flex-1 min-w-0">
+        <div style="font-size:12px;font-weight:600;color:#cbd5e1;">📱 Telegram Bot Control</div>
+        <div style="font-size:11px;color:#475569;margin-top:1px;"
+          x-text="botControl.active ? 'Активний · review надходять у Telegram · ' + botControl.admin_chat_id : (botControl.tip || 'Вимкнено')"></div>
+      </div>
+      <a href="/api/bot-control/status" target="_blank"
+        class="btn-ghost" style="font-size:11px;padding:3px 8px;white-space:nowrap;">Статус</a>
+    </div>
+
+    <!-- Obsidian vault -->
+    <div class="card p-3 flex items-center gap-3" style="border-color: #1a2332;">
+      <div class="w-2 h-2 rounded-full shrink-0"
+        :style="vault.enabled ? 'background:#22c55e;box-shadow:0 0 6px #22c55e' : 'background:#475569'"></div>
+      <div class="flex-1 min-w-0">
+        <div style="font-size:12px;font-weight:600;color:#cbd5e1;">🗃 Obsidian Vault</div>
+        <div style="font-size:11px;color:#475569;margin-top:1px;"
+          x-text="vault.enabled ? 'Підключено · ' + vault.notes_count + ' нотаток' : 'Вимкнено — додай OBSIDIAN_VAULT_PATH у .env'"></div>
+      </div>
+      <button @click="currentTab='vault'" class="btn-ghost" style="font-size:11px;padding:3px 8px;">Налаштувати</button>
+    </div>
+
+  </div>
+
+  <!-- Agents grid -->
+  <div>
+    <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:12px;">Агенти</div>
+    <div x-show="agents.length === 0" style="color:#334155;font-size:14px;">
+      Агентів ще немає. <button @click="currentTab='agents'" style="color:#6366f1;">Додати →</button>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <template x-for="agent in agents" :key="agent.id">
+        <div @click="openAgentDetail(agent)" class="card card-interactive p-4 space-y-2.5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div style="font-weight:600;font-size:14px;color:#f1f5f9;" x-text="agent.name"></div>
+              <div style="font-size:11px;color:#475569;margin-top:2px;" x-text="agentTypeLabel(agent.type)"></div>
             </div>
-          </template>
-        </div>
-
-        <!-- Модалка деталей агента -->
-        <div x-show="agentDetail.open" x-cloak
-          class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-          @click.self="agentDetail.open = false">
-          <div class="bg-slate-800 rounded-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 space-y-4">
-
-            <!-- Заголовок -->
-            <div class="flex items-start justify-between">
-              <div>
-                <div class="text-xl font-bold" x-text="agentDetail.agent && agentDetail.agent.name"></div>
-                <div class="flex items-center gap-2 mt-1">
-                  <span class="text-sm text-slate-400" x-text="agentDetail.agent && agentTypeLabel(agentDetail.agent.type)"></span>
-                  <span :class="'status-' + (agentDetail.agent && agentDetail.agent.status)"
-                    class="text-xs px-2 py-0.5 rounded-full"
-                    x-text="agentDetail.agent && sl(agentDetail.agent.status)"></span>
-                </div>
-              </div>
-              <button @click="agentDetail.open = false" class="text-slate-400 hover:text-white text-xl">✕</button>
-            </div>
-
-            <!-- Модель -->
-            <div class="bg-slate-900 rounded-lg px-4 py-2 text-sm">
-              <span class="text-slate-500">Модель: </span>
-              <span class="text-indigo-400 font-mono text-xs"
-                x-text="agentDetail.agent && agentDetail.agent.model"></span>
-            </div>
-
-            <!-- Системний промпт -->
-            <div x-show="agentDetail.agent && agentDetail.agent.system_prompt">
-              <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Системний промпт</div>
-              <div class="bg-slate-900 rounded-lg p-3 text-sm text-slate-300 whitespace-pre-wrap max-h-40 overflow-y-auto"
-                x-text="agentDetail.agent && agentDetail.agent.system_prompt"></div>
-            </div>
-
-            <!-- Статистика -->
-            <div class="grid grid-cols-3 gap-3 text-center">
-              <div class="bg-slate-900 rounded-lg p-3">
-                <div class="text-lg font-bold text-emerald-400"
-                  x-text="agentDetail.tasks.filter(t=>t.status==='done'||t.status==='approved').length"></div>
-                <div class="text-xs text-slate-500">Виконано</div>
-              </div>
-              <div class="bg-slate-900 rounded-lg p-3">
-                <div class="text-lg font-bold text-red-400"
-                  x-text="agentDetail.tasks.filter(t=>t.status==='error').length"></div>
-                <div class="text-xs text-slate-500">Помилок</div>
-              </div>
-              <div class="bg-slate-900 rounded-lg p-3">
-                <div class="text-lg font-bold text-blue-400"
-                  x-text="agentDetail.tasks.length"></div>
-                <div class="text-xs text-slate-500">Всього задач</div>
-              </div>
-            </div>
-
-            <!-- Історія задач -->
-            <div>
-              <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Остання активність
-              </div>
-              <div x-show="agentDetail.tasks.length === 0" class="text-sm text-slate-500">
-                Цей агент ще не виконував жодних задач.
-              </div>
-              <div class="space-y-2">
-                <template x-for="task in agentDetail.tasks" :key="task.id">
-                  <div :class="task.status === 'error' ? 'border-red-800' : 'border-slate-700'"
-                    class="bg-slate-900 rounded-lg p-3 border space-y-1">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="font-medium text-sm" x-text="task.step_name"></span>
-                      <span :class="'status-' + task.status"
-                        class="text-xs px-2 py-0.5 rounded-full" x-text="sl(task.status)"></span>
-                      <span class="text-xs text-slate-500 ml-auto"
-                        x-text="task.completed_at ? new Date(task.completed_at).toLocaleString('uk') : ''"></span>
-                    </div>
-                    <div x-show="task.error_message"
-                      class="text-xs text-red-400" x-text="task.error_message"></div>
-                    <div x-show="task.output_data && task.output_data.result"
-                      class="text-xs text-slate-400 line-clamp-2 whitespace-pre-wrap"
-                      x-text="task.output_data && task.output_data.result"></div>
-                  </div>
-                </template>
-              </div>
-            </div>
-
+            <div class="w-2 h-2 rounded-full mt-1 shrink-0"
+              :class="'dot-' + agent.status"></div>
           </div>
-        </div>
-      </div>
-
-      <!-- Активні задачі -->
-      <div>
-        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Активні задачі</h2>
-        <div x-show="jobs.filter(j=>j.status==='running').length === 0" class="text-slate-500 text-sm">
-          Немає активних задач.
-        </div>
-        <div class="space-y-3">
-          <template x-for="job in jobs.filter(j=>j.status==='running')" :key="job.id">
-            <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
-              <div class="flex items-center justify-between mb-2">
-                <div>
-                  <span class="font-semibold text-sm" x-text="job.pipeline_name"></span>
-                  <span class="text-slate-400 text-sm ml-2" x-text="'— ' + (job.initial_input.topic || '')"></span>
-                </div>
-                <span :class="'status-' + job.status"
-                  class="text-xs px-2 py-0.5 rounded-full font-medium"
-                  x-text="sl(job.status)"></span>
-              </div>
-              <div class="w-full bg-slate-700 rounded-full h-1.5">
-                <div class="bg-indigo-500 h-1.5 rounded-full transition-all"
-                  :style="'width:' + (job.task_counts.total ? Math.round((job.task_counts.done / job.task_counts.total) * 100) : 0) + '%'"></div>
-              </div>
-              <div class="flex justify-between text-xs text-slate-500 mt-1">
-                <span x-text="job.task_counts.done + '/' + job.task_counts.total + ' кроків'"></span>
-                <span x-show="job.task_counts.reviewing > 0"
-                  class="text-yellow-400" x-text="job.task_counts.reviewing + ' на перевірці'"></span>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <!-- Останні завершені -->
-      <div>
-        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Останні завершені</h2>
-        <div x-show="jobs.filter(j=>['done','error','stopped'].includes(j.status)).length === 0"
-          class="text-slate-500 text-sm">Немає завершених задач.</div>
-        <div class="space-y-2">
-          <template x-for="job in jobs.filter(j=>['done','error','stopped'].includes(j.status)).slice(0,5)" :key="job.id">
-            <div class="bg-slate-800 rounded-lg px-4 py-2 flex items-center justify-between">
-              <div class="text-sm">
-                <span x-text="job.pipeline_name" class="font-medium"></span>
-                <span class="text-slate-400 ml-2 text-xs" x-text="job.initial_input.topic || ''"></span>
-              </div>
-              <span :class="'status-' + job.status"
-                class="text-xs px-2 py-0.5 rounded-full" x-text="sl(job.status)"></span>
-            </div>
-          </template>
-        </div>
-      </div>
-    </div>
-
-<!-- ─── ЧЕРГА ПЕРЕВІРКИ ─── -->
-    <div x-show="currentTab === 'review'" x-cloak class="p-6 space-y-4">
-      <h1 class="text-2xl font-bold">Черга перевірки
-        <span x-show="reviewTasks.length > 0"
-          class="ml-2 bg-yellow-500 text-black text-sm rounded-full px-2 py-0.5"
-          x-text="reviewTasks.length"></span>
-      </h1>
-
-      <div x-show="reviewTasks.length === 0" class="text-slate-500">Немає матеріалів для перевірки.</div>
-
-      <template x-for="task in reviewTasks" :key="task.id">
-        <div class="bg-slate-800 rounded-xl border border-yellow-600/40 p-5 space-y-3">
-          <div class="flex items-center gap-3 flex-wrap">
-            <span class="text-xs bg-slate-700 px-2 py-0.5 rounded font-mono" x-text="task.step_name"></span>
-            <span class="text-xs text-slate-400">від <b x-text="task.agent_name || agentTypeLabel(task.agent_type)"></b></span>
-            <span class="text-xs text-slate-500" x-text="'Задача: ' + task.job_id.slice(0,8) + '...'"></span>
-          </div>
-
-          <div x-show="task.output_data"
-            class="bg-slate-900 rounded-lg p-3 text-sm text-slate-200 max-h-72 overflow-y-auto whitespace-pre-wrap"
-            x-text="task.output_data && task.output_data.result"></div>
-
-          <div class="flex gap-2 items-end">
-            <textarea
-              x-model="task._comment"
-              placeholder="Коментар (необов'язково)..."
-              rows="1"
-              class="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"></textarea>
-            <button @click="approveTask(task)"
-              class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors">
-              ✓ Схвалити
-            </button>
-            <button @click="rejectTask(task)"
-              class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-sm font-medium transition-colors">
-              ✗ Відхилити
-            </button>
-          </div>
-        </div>
-      </template>
-    </div>
-
-<!-- ─── ЗАДАЧІ (JOBS) ─── -->
-    <div x-show="currentTab === 'newjob'" x-cloak class="p-6 max-w-2xl space-y-6">
-      <h1 class="text-2xl font-bold">Нова задача</h1>
-
-      <div class="bg-slate-800 rounded-xl p-6 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Пайплайн</label>
-          <select x-model="jobForm.pipeline_id"
-            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-            <option value="">— Обрати пайплайн —</option>
-            <template x-for="p in pipelines" :key="p.id">
-              <option :value="p.id" x-text="p.name + ' (' + p.platform + ')'"></option>
-            </template>
-          </select>
-        </div>
-
-        <!-- Попередній перегляд пайплайну -->
-        <div x-show="jobForm.pipeline_id" class="bg-slate-900 rounded-lg p-3">
-          <div class="text-xs text-slate-400 mb-2 font-semibold">Кроки пайплайну:</div>
-          <template x-for="(step, i) in (pipelines.find(p=>p.id===jobForm.pipeline_id)||{steps:[]}).steps" :key="i">
-            <div class="flex items-center gap-2 text-xs text-slate-300 py-0.5">
-              <span class="text-slate-500" x-text="i+1 + '.'"></span>
-              <span x-text="step.step_name" class="font-medium"></span>
-              <span class="text-slate-500" x-text="'→ ' + agentTypeLabel(step.agent_type)"></span>
-              <span x-show="step.review_required" class="bg-yellow-600 text-black px-1.5 rounded text-[10px]">перевірка</span>
-              <span x-show="step.depends_on && step.depends_on.length" class="text-slate-600"
-                x-text="'після: ' + step.depends_on.join(', ')"></span>
-            </div>
-          </template>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Тема *</label>
-          <input x-model="jobForm.topic" type="text"
-            placeholder="напр. Як заробити на YouTube у 2025 році"
-            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Ключові слова</label>
-          <input x-model="jobForm.keywords" type="text"
-            placeholder="youtube, монетизація, канал"
-            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Платформа</label>
-          <select x-model="jobForm.platform_id"
-            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-            <option value="">— Не вказано —</option>
-            <template x-for="p in platforms" :key="p.id">
-              <option :value="p.id" x-text="p.name + ' (' + p.type + ')'"></option>
-            </template>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Додатковий контекст</label>
-          <textarea x-model="jobForm.extra" rows="3"
-            placeholder="Тон, стиль, цільова аудиторія, мова контенту..."
-            class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"></textarea>
-        </div>
-
-        <button @click="startNewJob()"
-          :disabled="!jobForm.pipeline_id || !jobForm.topic"
-          class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium transition-colors">
-          ▶ Запустити задачу
-        </button>
-      </div>
-
-      <!-- Список усіх задач -->
-      <div>
-        <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Усі задачі</h2>
-        <div x-show="jobs.length === 0" class="text-slate-500 text-sm">Задач ще немає.</div>
-        <div class="space-y-2">
-          <template x-for="job in jobs" :key="job.id">
-            <div class="bg-slate-800 rounded-lg px-4 py-3 flex items-center gap-3">
-              <span :class="'status-' + job.status"
-                class="text-xs px-2 py-0.5 rounded-full shrink-0" x-text="sl(job.status)"></span>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium" x-text="job.pipeline_name"></div>
-                <div class="text-xs text-slate-400 truncate" x-text="job.initial_input.topic || ''"></div>
-              </div>
-              <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                <button x-show="job.status === 'pending'"
-                  @click="startJob(job.id)"
-                  class="text-xs px-2 py-1 bg-indigo-600 hover:bg-indigo-500 rounded transition-colors">
-                  ▶ Старт
-                </button>
-                <button x-show="job.status === 'running'"
-                  @click="stopJob(job.id)"
-                  class="text-xs px-2 py-1 bg-red-700 hover:bg-red-600 rounded transition-colors">
-                  ⏹ Стоп
-                </button>
-                <button
-                  x-show="job.status === 'done' && hasTelegramPlatform(job)"
-                  @click="sendToTelegram(job)"
-                  :disabled="job._sending"
-                  class="text-xs px-2 py-1 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 rounded transition-colors">
-                  📤 Telegram
-                </button>
-                <button @click="viewJobTasks(job.id)"
-                  class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition-colors">
-                  Кроки
-                </button>
-                <button @click="deleteJob(job.id)"
-                  class="text-xs px-2 py-1 bg-slate-700 hover:bg-red-700 rounded transition-colors">
-                  ✕
-                </button>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <!-- Модалка перегляду кроків -->
-      <div x-show="taskModal.open" x-cloak
-        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-        @click.self="taskModal.open = false">
-        <div class="bg-slate-800 rounded-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 space-y-3">
           <div class="flex items-center justify-between">
-            <h3 class="font-semibold text-lg">Кроки задачі</h3>
-            <button @click="taskModal.open = false" class="text-slate-400 hover:text-white text-xl">✕</button>
+            <span class="sb" :class="'sb-' + agent.status" x-text="sl(agent.status)"></span>
           </div>
-          <template x-for="task in taskModal.tasks" :key="task.id">
-            <div :class="task.status === 'error' ? 'border border-red-700' : 'border border-slate-700'"
-              class="bg-slate-900 rounded-lg p-3 space-y-2">
+          <div style="font-size:11px;color:#334155;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+            x-text="agent.model.split('/').pop() || agent.model"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Running jobs -->
+  <div x-show="jobs.filter(j=>j.status==='running').length > 0">
+    <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:12px;">Виконується зараз</div>
+    <div class="space-y-3">
+      <template x-for="job in jobs.filter(j=>j.status==='running')" :key="job.id">
+        <div class="card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <span style="font-weight:600;font-size:14px;color:#f1f5f9;" x-text="job.pipeline_name"></span>
+              <span style="color:#475569;font-size:13px;margin-left:8px;" x-text="job.initial_input.topic || ''"></span>
+            </div>
+            <span class="sb sb-running">виконується</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill"
+              :style="'width:' + (job.task_counts.total ? Math.round((job.task_counts.done / job.task_counts.total) * 100) : 0) + '%'"></div>
+          </div>
+          <div class="flex justify-between mt-2" style="font-size:12px;color:#475569;">
+            <span x-text="job.task_counts.done + '/' + job.task_counts.total + ' кроків'"></span>
+            <span x-show="job.task_counts.reviewing > 0" style="color:#fbbf24;"
+              x-text="job.task_counts.reviewing + ' на перевірці'"></span>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Recent done jobs -->
+  <div>
+    <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:12px;">Останні завершені</div>
+    <div x-show="jobs.filter(j=>['done','error','stopped'].includes(j.status)).length === 0"
+      style="color:#334155;font-size:14px;">Завершених задач ще немає.</div>
+    <div class="space-y-2">
+      <template x-for="job in jobs.filter(j=>['done','error','stopped'].includes(j.status)).slice(0,6)" :key="job.id">
+        <div class="card p-3 flex items-center gap-3">
+          <span class="sb" :class="'sb-' + job.status" x-text="sl(job.status)"></span>
+          <div class="flex-1 min-w-0">
+            <span style="font-size:13px;font-weight:500;" x-text="job.pipeline_name"></span>
+            <span style="color:#475569;font-size:12px;margin-left:8px;" x-text="job.initial_input.topic || ''"></span>
+          </div>
+          <div class="flex gap-2 shrink-0">
+            <button x-show="job.status === 'done' && hasTelegramPlatform(job)"
+              @click="sendToTelegram(job)"
+              :disabled="job._sending"
+              class="btn-sky" style="font-size:12px;padding:4px 10px;">
+              <span x-show="!job._sending">📤 Telegram</span>
+              <span x-show="job._sending">⏳</span>
+            </button>
+            <button @click="viewJobTasks(job.id)" class="btn-ghost" style="font-size:12px;padding:4px 10px;">Кроки</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Agent detail modal -->
+  <div x-show="agentDetail.open" x-cloak
+    class="fixed inset-0 flex items-center justify-center z-50 p-4"
+    style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px);"
+    @click.self="agentDetail.open = false">
+    <div class="card w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 space-y-5"
+      style="border-color:#2d3f52;">
+
+      <div class="flex items-start justify-between">
+        <div>
+          <div style="font-size:20px;font-weight:700;color:#f1f5f9;" x-text="agentDetail.agent?.name"></div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <span style="font-size:13px;color:#475569;" x-text="agentDetail.agent && agentTypeLabel(agentDetail.agent.type)"></span>
+            <span class="sb" :class="'sb-' + (agentDetail.agent?.status || 'idle')"
+              x-text="agentDetail.agent && sl(agentDetail.agent.status)"></span>
+          </div>
+        </div>
+        <button @click="agentDetail.open = false" style="color:#475569;font-size:20px;line-height:1;padding:4px;">✕</button>
+      </div>
+
+      <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px 14px;">
+        <span style="font-size:12px;color:#475569;">Модель: </span>
+        <span style="font-size:12px;color:#6366f1;font-family:monospace;" x-text="agentDetail.agent?.model"></span>
+      </div>
+
+      <div x-show="agentDetail.agent?.system_prompt">
+        <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px;">Системний промпт</div>
+        <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;font-size:13px;color:#94a3b8;white-space:pre-wrap;max-height:140px;overflow-y:auto;"
+          x-text="agentDetail.agent?.system_prompt"></div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;">
+          <div style="font-size:22px;font-weight:800;color:#4ade80;"
+            x-text="agentDetail.tasks.filter(t=>['done','approved'].includes(t.status)).length"></div>
+          <div style="font-size:11px;color:#475569;margin-top:4px;">Виконано</div>
+        </div>
+        <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;">
+          <div style="font-size:22px;font-weight:800;color:#f87171;"
+            x-text="agentDetail.tasks.filter(t=>t.status==='error').length"></div>
+          <div style="font-size:11px;color:#475569;margin-top:4px;">Помилок</div>
+        </div>
+        <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;">
+          <div style="font-size:22px;font-weight:800;color:#a5b4fc;"
+            x-text="agentDetail.tasks.length"></div>
+          <div style="font-size:11px;color:#475569;margin-top:4px;">Всього</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:10px;">Остання активність</div>
+        <div x-show="agentDetail.tasks.length === 0" style="font-size:13px;color:#334155;">Задач ще не виконувалось.</div>
+        <div class="space-y-2">
+          <template x-for="task in agentDetail.tasks" :key="task.id">
+            <div class="space-y-1.5"
+              :style="task.status === 'error' ? 'background:#0d0505;border:1px solid #450a0a;border-radius:8px;padding:10px;' : 'background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px;'">
               <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-medium text-sm" x-text="task.step_name"></span>
-                <span class="text-xs text-slate-400" x-text="'(' + agentTypeLabel(task.agent_type) + ')'"></span>
-                <span :class="'status-' + task.status"
-                  class="text-xs px-2 py-0.5 rounded-full" x-text="sl(task.status)"></span>
-                <span x-show="task.agent_name" class="text-xs text-slate-500" x-text="task.agent_name"></span>
+                <span style="font-size:13px;font-weight:500;" x-text="task.step_name"></span>
+                <span class="sb" :class="'sb-' + task.status" x-text="sl(task.status)"></span>
+                <span style="font-size:11px;color:#334155;margin-left:auto;"
+                  x-text="task.completed_at ? new Date(task.completed_at).toLocaleString('uk') : ''"></span>
               </div>
-              <!-- Помилка -->
-              <div x-show="task.error_message"
-                class="bg-red-950 border border-red-800 rounded p-2 text-xs text-red-300 whitespace-pre-wrap"
-                x-text="'❌ ' + task.error_message"></div>
-              <!-- Результат -->
-              <div x-show="task.output_data && task.output_data.result"
-                class="text-xs text-slate-300 whitespace-pre-wrap bg-slate-800 rounded p-2 max-h-40 overflow-y-auto"
-                x-text="task.output_data && task.output_data.result"></div>
+              <div x-show="task.error_message" style="font-size:12px;color:#f87171;" x-text="task.error_message"></div>
+              <div x-show="task.output_data?.result" style="font-size:12px;color:#475569;"
+                class="line-clamp-2" x-text="task.output_data?.result"></div>
             </div>
           </template>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-<!-- ─── АГЕНТИ ─── -->
-    <div x-show="currentTab === 'agents'" x-cloak class="p-6 space-y-4">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Агенти</h1>
-        <button @click="openAgentModal()"
-          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors">
-          + Додати агента
-        </button>
+<!-- ─────────────────────── REVIEW QUEUE ─────────────────────── -->
+<div x-show="currentTab === 'review'" x-cloak class="space-y-4">
+
+  <div x-show="reviewTasks.length === 0"
+    class="card p-12 text-center" style="border-style:dashed;">
+    <div style="font-size:32px;margin-bottom:12px;">✅</div>
+    <div style="font-weight:600;color:#f1f5f9;margin-bottom:4px;">Черга порожня</div>
+    <div style="font-size:13px;color:#475569;">Немає матеріалів для перевірки</div>
+  </div>
+
+  <template x-for="task in reviewTasks" :key="task.id">
+    <div class="card p-5 space-y-4" style="border-color:#78350f;">
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <span style="font-size:11px;font-family:monospace;background:#0d1117;border:1px solid #1a2332;padding:2px 8px;border-radius:4px;color:#a5b4fc;" x-text="task.step_name"></span>
+        <span style="font-size:12px;color:#475569;">від <strong style="color:#94a3b8;" x-text="task.agent_name || agentTypeLabel(task.agent_type)"></strong></span>
+        <span class="sb sb-waiting_review">очікує перевірки</span>
+        <span style="font-size:11px;color:#334155;margin-left:auto;" x-text="task.job_id.slice(0,8) + '...'"></span>
       </div>
 
-      <div x-show="agents.length === 0" class="text-slate-500 text-sm">Агентів ще немає.</div>
+      <div x-show="task.output_data"
+        style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:14px;font-size:13px;color:#d1d5db;max-height:320px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;"
+        x-text="task.output_data?.result"></div>
 
-      <div class="space-y-2">
-        <template x-for="agent in agents" :key="agent.id">
-          <div class="bg-slate-800 rounded-xl px-5 py-4 flex items-start gap-4">
+      <div class="flex gap-2 items-end">
+        <textarea
+          x-model="task._comment"
+          placeholder="Коментар (необов'язково)..."
+          rows="1"
+          class="field flex-1" style="resize:none;"></textarea>
+        <button @click="approveTask(task)" class="btn-success" style="white-space:nowrap;">✓ Схвалити</button>
+        <button @click="rejectTask(task)" class="btn-danger" style="white-space:nowrap;">✗ Відхилити</button>
+      </div>
+    </div>
+  </template>
+</div>
+
+<!-- ─────────────────────── JOBS ─────────────────────── -->
+<div x-show="currentTab === 'newjob'" x-cloak class="space-y-6">
+
+  <!-- New job form -->
+  <div x-show="showNewJobForm" class="card p-6 space-y-4" style="border-color:#2d3f52;">
+    <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:4px;">Нова задача</div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ПАЙПЛАЙН</label>
+        <select x-model="jobForm.pipeline_id" class="field">
+          <option value="">— Обрати пайплайн —</option>
+          <template x-for="p in pipelines" :key="p.id">
+            <option :value="p.id" x-text="p.name + ' (' + p.platform + ')'"></option>
+          </template>
+        </select>
+      </div>
+
+      <!-- Pipeline steps preview -->
+      <div x-show="jobForm.pipeline_id" class="md:col-span-2"
+        style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;">
+        <div style="font-size:11px;color:#475569;font-weight:600;margin-bottom:8px;">КРОКИ ПАЙПЛАЙНУ</div>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="(step, i) in (pipelines.find(p=>p.id===jobForm.pipeline_id)||{steps:[]}).steps" :key="i">
+            <div class="flex items-center gap-1.5" style="font-size:12px;">
+              <span x-show="i > 0" style="color:#334155;">→</span>
+              <span style="background:#0d1117;border:1px solid #1a2332;border-radius:6px;padding:3px 8px;color:#a5b4fc;" x-text="step.step_name"></span>
+              <span x-show="step.review_required"
+                style="background:#2a1a00;color:#fbbf24;border:1px solid #78350f;border-radius:4px;padding:1px 5px;font-size:10px;">перевірка</span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ТЕМА *</label>
+        <input x-model="jobForm.topic" type="text"
+          placeholder="напр. Як заробити на YouTube у 2025 році"
+          class="field" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">КЛЮЧОВІ СЛОВА</label>
+        <input x-model="jobForm.keywords" type="text"
+          placeholder="youtube, монетизація, канал"
+          class="field" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ПЛАТФОРМА</label>
+        <select x-model="jobForm.platform_id" class="field">
+          <option value="">— Не вказано —</option>
+          <template x-for="p in platforms" :key="p.id">
+            <option :value="p.id" x-text="p.name + ' (' + p.type + ')'"></option>
+          </template>
+        </select>
+      </div>
+
+      <div class="md:col-span-2">
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">КОНТЕКСТ</label>
+        <textarea x-model="jobForm.extra" rows="2"
+          placeholder="Тон, стиль, цільова аудиторія, мова контенту..."
+          class="field"></textarea>
+      </div>
+    </div>
+
+    <div class="flex gap-2 justify-end">
+      <button @click="showNewJobForm = false" class="btn-ghost">Скасувати</button>
+      <button @click="startNewJob()"
+        :disabled="!jobForm.pipeline_id || !jobForm.topic"
+        class="btn-primary">
+        ▶ Запустити
+      </button>
+    </div>
+  </div>
+
+  <!-- Jobs list -->
+  <div>
+    <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:12px;">Усі задачі</div>
+    <div x-show="jobs.length === 0"
+      class="card p-10 text-center" style="border-style:dashed;">
+      <div style="font-size:28px;margin-bottom:10px;">▶</div>
+      <div style="font-weight:600;color:#f1f5f9;margin-bottom:4px;">Задач ще немає</div>
+      <div style="font-size:13px;color:#475569;">Натисни «＋ Нова задача» щоб почати</div>
+    </div>
+
+    <div class="space-y-2">
+      <template x-for="job in jobs" :key="job.id">
+        <div class="card p-3.5 flex items-center gap-3">
+          <span class="sb shrink-0" :class="'sb-' + job.status" x-text="sl(job.status)"></span>
+          <div class="flex-1 min-w-0">
+            <div style="font-size:13px;font-weight:500;color:#e2e8f0;" x-text="job.pipeline_name"></div>
+            <div style="font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+              x-text="job.initial_input.topic || ''"></div>
+          </div>
+
+          <!-- Progress for running -->
+          <div x-show="job.status === 'running'" style="width:80px;">
+            <div class="progress-bar">
+              <div class="progress-fill"
+                :style="'width:' + (job.task_counts.total ? Math.round((job.task_counts.done/job.task_counts.total)*100) : 0) + '%'"></div>
+            </div>
+            <div style="font-size:10px;color:#475569;text-align:center;margin-top:2px;"
+              x-text="job.task_counts.done + '/' + job.task_counts.total"></div>
+          </div>
+
+          <div class="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+            <button x-show="job.status === 'pending'"
+              @click="startJob(job.id)" class="btn-primary" style="font-size:12px;padding:4px 10px;">▶ Старт</button>
+            <button x-show="job.status === 'running'"
+              @click="stopJob(job.id)" class="btn-danger" style="font-size:12px;padding:4px 10px;">⏹ Стоп</button>
+            <button
+              x-show="job.status === 'done' && hasTelegramPlatform(job)"
+              @click="sendToTelegram(job)"
+              :disabled="job._sending"
+              class="btn-sky" style="font-size:12px;padding:4px 10px;">
+              <span x-show="!job._sending">📤 Telegram</span>
+              <span x-show="job._sending">⏳ Надсилаю...</span>
+            </button>
+            <button @click="viewJobTasks(job.id)" class="btn-ghost" style="font-size:12px;padding:4px 10px;">Кроки</button>
+            <button @click="deleteJob(job.id)" class="btn-ghost" style="font-size:12px;padding:4px 10px;color:#475569;">✕</button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Task steps modal -->
+  <div x-show="taskModal.open" x-cloak
+    class="fixed inset-0 flex items-center justify-center z-50 p-4"
+    style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px);"
+    @click.self="taskModal.open = false">
+    <div class="card w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 space-y-3"
+      style="border-color:#2d3f52;">
+      <div class="flex items-center justify-between">
+        <div style="font-size:16px;font-weight:700;color:#f1f5f9;">Кроки задачі</div>
+        <button @click="taskModal.open = false" style="color:#475569;font-size:20px;">✕</button>
+      </div>
+      <template x-for="task in taskModal.tasks" :key="task.id">
+        <div :style="task.status === 'error' ? 'background:#0d0505;border:1px solid #450a0a;border-radius:8px;padding:12px;' : 'background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;'"
+          class="space-y-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span style="font-size:13px;font-weight:600;" x-text="task.step_name"></span>
+            <span style="font-size:12px;color:#475569;" x-text="'(' + agentTypeLabel(task.agent_type) + ')'"></span>
+            <span class="sb" :class="'sb-' + task.status" x-text="sl(task.status)"></span>
+            <span x-show="task.agent_name" style="font-size:12px;color:#334155;" x-text="task.agent_name"></span>
+            <span x-show="task.completed_at" style="font-size:11px;color:#334155;margin-left:auto;"
+              x-text="new Date(task.completed_at).toLocaleString('uk')"></span>
+          </div>
+          <div x-show="task.error_message"
+            style="background:#1c0a0a;border:1px solid #450a0a;border-radius:6px;padding:8px 10px;font-size:12px;color:#f87171;white-space:pre-wrap;"
+            x-text="'❌ ' + task.error_message"></div>
+          <div x-show="task.output_data?.result"
+            style="font-size:12px;color:#94a3b8;white-space:pre-wrap;background:#0a0f1a;border-radius:6px;padding:10px;max-height:180px;overflow-y:auto;line-height:1.5;"
+            x-text="task.output_data?.result"></div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─────────────────────── AGENTS ─────────────────────── -->
+<div x-show="currentTab === 'agents'" x-cloak class="space-y-4">
+
+  <div x-show="agents.length === 0"
+    class="card p-12 text-center" style="border-style:dashed;">
+    <div style="font-size:32px;margin-bottom:12px;">🤖</div>
+    <div style="font-weight:600;color:#f1f5f9;margin-bottom:4px;">Агентів ще немає</div>
+    <div style="font-size:13px;color:#475569;">Натисни «＋ Агент» щоб додати першого</div>
+  </div>
+
+  <div class="space-y-2">
+    <template x-for="agent in agents" :key="agent.id">
+      <div class="card p-4 flex items-start gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2.5 mb-0.5 flex-wrap">
+            <span style="font-weight:600;font-size:14px;color:#f1f5f9;" x-text="agent.name"></span>
+            <span style="font-size:11px;background:#0d1117;border:1px solid #1a2332;padding:1px 7px;border-radius:4px;color:#64748b;" x-text="agentTypeLabel(agent.type)"></span>
+            <span class="sb" :class="'sb-' + agent.status" x-text="sl(agent.status)"></span>
+          </div>
+          <div style="font-size:12px;color:#334155;font-family:monospace;margin-top:2px;" x-text="agent.model"></div>
+          <div x-show="agent.system_prompt"
+            style="font-size:12px;color:#475569;margin-top:6px;" class="line-clamp-2"
+            x-text="agent.system_prompt"></div>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button @click="openAgentModal(agent)" class="btn-ghost">Редагувати</button>
+          <button @click="deleteAgent(agent.id)" class="btn-danger">Видалити</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Agent modal -->
+  <div x-show="agentModal.open" x-cloak
+    class="fixed inset-0 flex items-center justify-center z-50 p-4"
+    style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px);"
+    @click.self="agentModal.open = false">
+    <div class="card w-full max-w-lg p-6 space-y-4" style="border-color:#2d3f52;">
+      <div style="font-size:16px;font-weight:700;color:#f1f5f9;"
+        x-text="agentModal.editing ? 'Редагувати агента' : 'Новий агент'"></div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">НАЗВА</label>
+        <input x-model="agentModal.form.name" type="text" placeholder="напр. Контент-письменник" class="field" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ТИП</label>
+          <select x-model="agentModal.form.type" class="field">
+            <option value="researcher">🔍 Дослідник</option>
+            <option value="writer">✍️ Сценарист</option>
+            <option value="image">🖼 Зображення</option>
+            <option value="voice">🎙 Озвучка</option>
+            <option value="editor">✂️ Редактор</option>
+            <option value="publisher">📤 Публікатор</option>
+            <option value="custom">⚙️ Власний</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ПАРАЛЕЛЬНИХ ЗАДАЧ</label>
+          <input x-model.number="agentModal.form.max_parallel_tasks" type="number" min="1" max="10" class="field" />
+        </div>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">МОДЕЛЬ</label>
+        <select x-model="agentModal.form.model" class="field" style="margin-bottom:6px;">
+          <option value="qwen/qwen3.6-plus:free">qwen/qwen3.6-plus:free ✅</option>
+          <option value="stepfun/step-3.5-flash:free">stepfun/step-3.5-flash:free ✅</option>
+          <option value="qwen/qwen3-14b:free">qwen/qwen3-14b:free</option>
+          <option value="stepfun/step-3-mini:free">stepfun/step-3-mini:free</option>
+          <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct:free</option>
+          <option value="google/gemini-2.0-flash-exp:free">google/gemini-2.0-flash-exp:free</option>
+          <option value="mistralai/mistral-7b-instruct:free">mistralai/mistral-7b-instruct:free</option>
+        </select>
+        <input x-model="agentModal.form.model" type="text"
+          placeholder="або вставте будь-який model ID з OpenRouter"
+          class="field" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">СИСТЕМНИЙ ПРОМПТ</label>
+        <textarea x-model="agentModal.form.system_prompt" rows="4"
+          placeholder="Ти — експерт-дослідник контенту. Аналізуй задану тему та надавай..."
+          class="field"></textarea>
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button @click="agentModal.open = false" class="btn-ghost">Скасувати</button>
+        <button @click="saveAgent()" class="btn-primary">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────── PIPELINES ─────────────────────── -->
+<div x-show="currentTab === 'pipelines'" x-cloak class="space-y-4">
+
+  <div x-show="pipelines.length === 0"
+    class="card p-12 text-center" style="border-style:dashed;">
+    <div style="font-size:32px;margin-bottom:12px;">🔗</div>
+    <div style="font-weight:600;color:#f1f5f9;margin-bottom:4px;">Пайплайнів ще немає</div>
+    <div style="font-size:13px;color:#475569;">Натисни «＋ Пайплайн» щоб створити шаблон</div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <template x-for="p in pipelines" :key="p.id">
+      <div class="card p-5 space-y-4">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div style="font-weight:600;font-size:15px;color:#f1f5f9;" x-text="p.name"></div>
+            <div class="flex gap-2 mt-2 flex-wrap">
+              <span style="font-size:11px;background:#0d1117;border:1px solid #1a2332;padding:2px 8px;border-radius:4px;color:#6366f1;" x-text="p.platform"></span>
+              <span style="font-size:11px;background:#0d1117;border:1px solid #1a2332;padding:2px 8px;border-radius:4px;color:#64748b;" x-text="p.content_type"></span>
+            </div>
+          </div>
+          <div class="flex gap-1.5 shrink-0">
+            <button @click="openPipelineModal(p)" class="btn-ghost" style="font-size:12px;padding:4px 10px;">Змінити</button>
+            <button @click="deletePipeline(p.id)" class="btn-danger" style="font-size:12px;padding:4px 10px;">Видалити</button>
+          </div>
+        </div>
+
+        <div x-show="p.description" style="font-size:13px;color:#475569;" x-text="p.description"></div>
+
+        <div class="space-y-1.5">
+          <template x-for="(step, i) in p.steps" :key="i">
+            <div class="flex items-center gap-2 text-sm">
+              <span style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;" x-text="i+1"></span>
+              <span style="font-weight:500;font-size:13px;" x-text="step.step_name"></span>
+              <span style="font-size:12px;color:#475569;" x-text="'→ ' + agentTypeLabel(step.agent_type)"></span>
+              <span x-show="step.review_required"
+                style="background:#2a1a00;color:#fbbf24;border:1px solid #78350f;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;">перевірка</span>
+              <span x-show="step.depends_on?.length"
+                style="font-size:11px;color:#334155;" x-text="'⟵ ' + step.depends_on.join(', ')"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Pipeline modal -->
+  <div x-show="pipelineModal.open" x-cloak
+    class="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-y-auto"
+    style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px);"
+    @click.self="pipelineModal.open = false">
+    <div class="card w-full max-w-2xl p-6 space-y-4 my-8" style="border-color:#2d3f52;">
+      <div style="font-size:16px;font-weight:700;color:#f1f5f9;"
+        x-text="pipelineModal.editing ? 'Редагувати пайплайн' : 'Новий пайплайн'"></div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">НАЗВА</label>
+          <input x-model="pipelineModal.form.name" type="text" placeholder="YouTube відео" class="field" />
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ПЛАТФОРМА</label>
+          <select x-model="pipelineModal.form.platform" class="field">
+            <option value="any">будь-яка</option>
+            <option value="youtube">YouTube</option>
+            <option value="telegram">Telegram</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="blog">Blog</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ТИП КОНТЕНТУ</label>
+          <select x-model="pipelineModal.form.content_type" class="field">
+            <option value="text">текст</option>
+            <option value="video">відео</option>
+            <option value="image">зображення</option>
+            <option value="audio">аудіо</option>
+            <option value="mixed">змішаний</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ОПИС</label>
+          <input x-model="pipelineModal.form.description" type="text" class="field" />
+        </div>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <label style="font-size:12px;color:#64748b;font-weight:600;">КРОКИ</label>
+          <button @click="addStep()" class="btn-ghost" style="font-size:12px;padding:4px 10px;">＋ Крок</button>
+        </div>
+        <div class="space-y-2">
+          <template x-for="(step, i) in pipelineModal.form.steps" :key="i">
+            <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px;" class="space-y-2">
+              <div class="flex items-center gap-2">
+                <span style="font-size:11px;color:#334155;width:16px;flex-shrink:0;" x-text="i+1 + '.'"></span>
+                <input x-model="step.step_name" type="text" placeholder="назва_кроку"
+                  class="field" style="flex:1;" />
+                <select x-model="step.agent_type" class="field" style="flex:1;">
+                  <option value="researcher">🔍 Дослідник</option>
+                  <option value="writer">✍️ Сценарист</option>
+                  <option value="image">🖼 Зображення</option>
+                  <option value="voice">🎙 Озвучка</option>
+                  <option value="editor">✂️ Редактор</option>
+                  <option value="publisher">📤 Публікатор</option>
+                  <option value="custom">⚙️ Власний</option>
+                </select>
+                <label class="flex items-center gap-1.5" style="font-size:12px;color:#64748b;white-space:nowrap;cursor:pointer;">
+                  <input type="checkbox" x-model="step.review_required" style="accent-color:#6366f1;" />
+                  перевірка
+                </label>
+                <button @click="pipelineModal.form.steps.splice(i, 1)"
+                  style="color:#475569;font-size:18px;flex-shrink:0;line-height:1;">×</button>
+              </div>
+              <input x-model="step._depends_raw" type="text"
+                :placeholder="i > 0 ? 'залежить від (через кому: крок1, крок2)' : 'немає залежностей'"
+                @change="step.depends_on = step._depends_raw.split(',').map(s=>s.trim()).filter(Boolean)"
+                class="field" style="font-size:12px;" />
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="flex gap-2 justify-end">
+        <button @click="pipelineModal.open = false" class="btn-ghost">Скасувати</button>
+        <button @click="savePipeline()" class="btn-primary">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────── PLATFORMS ─────────────────────── -->
+<div x-show="currentTab === 'platforms'" x-cloak class="space-y-4">
+
+  <div x-show="platforms.length === 0"
+    class="card p-12 text-center" style="border-style:dashed;">
+    <div style="font-size:32px;margin-bottom:12px;">📡</div>
+    <div style="font-weight:600;color:#f1f5f9;margin-bottom:4px;">Платформ ще немає</div>
+    <div style="font-size:13px;color:#475569;">Додай Telegram або іншу платформу для публікації</div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <template x-for="p in platforms" :key="p.id">
+      <div class="card p-4 space-y-3">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:#f1f5f9;" x-text="p.name"></div>
+            <div class="flex gap-1.5 mt-2 flex-wrap">
+              <span style="font-size:11px;background:#0d1117;border:1px solid #1a2332;padding:2px 8px;border-radius:4px;color:#6366f1;" x-text="p.type"></span>
+              <span x-show="p.auto_publish"
+                style="font-size:11px;background:#052010;border:1px solid #064e2e;color:#34d399;padding:2px 8px;border-radius:4px;">автопублікація</span>
+              <span x-show="!p.active"
+                style="font-size:11px;background:#1c0a0a;border:1px solid #450a0a;color:#f87171;padding:2px 8px;border-radius:4px;">неактивна</span>
+            </div>
+          </div>
+          <div class="flex gap-1 shrink-0">
+            <button @click="openPlatformModal(p)" class="btn-ghost" style="font-size:12px;padding:4px 10px;">Змінити</button>
+            <button @click="deletePlatform(p.id)" class="btn-danger" style="font-size:12px;padding:4px 10px;">✕</button>
+          </div>
+        </div>
+
+        <div x-show="p.credentials?.channel_id" style="display:flex;align-items:center;gap:8px;font-size:12px;">
+          <span style="color:#475569;">Канал:</span>
+          <span style="color:#38bdf8;font-family:monospace;" x-text="p.credentials?.channel_id"></span>
+          <span x-show="p.credentials?.channel_id === '@your_channel'"
+            style="color:#fbbf24;font-size:11px;">⚠️ встанови реальний!</span>
+        </div>
+        <div x-show="p.credentials?.bot_token"
+          style="font-size:11px;color:#1e293b;">🔑 bot_token: встановлено</div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Platform modal -->
+  <div x-show="platformModal.open" x-cloak
+    class="fixed inset-0 flex items-center justify-center z-50 p-4"
+    style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px);"
+    @click.self="platformModal.open = false">
+    <div class="card w-full max-w-lg p-6 space-y-4" style="border-color:#2d3f52;">
+      <div style="font-size:16px;font-weight:700;color:#f1f5f9;"
+        x-text="platformModal.editing ? 'Редагувати платформу' : 'Нова платформа'"></div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">НАЗВА</label>
+          <input x-model="platformModal.form.name" type="text" placeholder="Мій Telegram канал" class="field" />
+        </div>
+        <div class="col-span-2">
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ТИП</label>
+          <select x-model="platformModal.form.type" class="field">
+            <option value="telegram">Telegram</option>
+            <option value="youtube">YouTube</option>
+            <option value="instagram">Instagram</option>
+            <option value="tiktok">TikTok</option>
+            <option value="blog">Blog</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Telegram: спеціальні поля -->
+      <template x-if="platformModal.form.type === 'telegram'">
+        <div class="space-y-3">
+          <div>
+            <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">
+              CHANNEL ID
+              <span style="color:#334155;font-weight:400;margin-left:4px;">(@my_channel або -100xxxxxxxxxx)</span>
+            </label>
+            <input x-model="platformModal.form.tg_channel_id" type="text"
+              placeholder="@my_channel або -1003514711327"
+              class="field" style="font-family:monospace;" />
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">
+              BOT TOKEN
+              <span style="color:#334155;font-weight:400;margin-left:4px;">(залиш порожнім — використає TELEGRAM_BOT_TOKEN з .env)</span>
+            </label>
+            <input x-model="platformModal.form.tg_bot_token" type="password"
+              placeholder="7xxxxxxxxx:AAxxxxxxxxx або залиш порожнім"
+              class="field" style="font-family:monospace;" />
+          </div>
+        </div>
+      </template>
+
+      <!-- Інші: JSON -->
+      <template x-if="platformModal.form.type !== 'telegram'">
+        <div>
+          <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ОБЛІКОВІ ДАНІ (JSON)</label>
+          <textarea x-model="platformModal.form.credentials_raw" rows="3"
+            placeholder='{"api_key": "...", "channel_id": "..."}'
+            class="field" style="font-family:monospace;"></textarea>
+        </div>
+      </template>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">НАЛАШТУВАННЯ (JSON)</label>
+        <textarea x-model="platformModal.form.settings_raw" rows="2"
+          placeholder='{"language": "uk"}'
+          class="field" style="font-family:monospace;"></textarea>
+      </div>
+
+      <label class="flex items-center gap-2" style="font-size:13px;color:#94a3b8;cursor:pointer;">
+        <input type="checkbox" x-model="platformModal.form.auto_publish" style="accent-color:#6366f1;width:15px;height:15px;" />
+        Автопублікація (без ручного схвалення)
+      </label>
+
+      <div class="flex gap-2 justify-end">
+        <button @click="platformModal.open = false" class="btn-ghost">Скасувати</button>
+        <button @click="savePlatform()" class="btn-primary">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────── SCHEDULE ─────────────────────── -->
+<div x-show="currentTab === 'schedule'" x-cloak class="space-y-6">
+
+  <!-- New schedule form -->
+  <div x-show="showScheduleForm" class="card p-6 space-y-4" style="border-color:#2d3f52;">
+    <div style="font-size:15px;font-weight:700;color:#f1f5f9;"
+      x-text="scheduleModal.editing ? 'Редагувати розклад' : 'Новий розклад'"></div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">НАЗВА</label>
+        <input x-model="scheduleForm.name" type="text"
+          placeholder="напр. Ранковий пост про крипту"
+          class="field" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ПАЙПЛАЙН</label>
+        <select x-model="scheduleForm.pipeline_id" class="field">
+          <option value="">— Обрати —</option>
+          <template x-for="p in pipelines" :key="p.id">
+            <option :value="p.id" x-text="p.name"></option>
+          </template>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ПЛАТФОРМА</label>
+        <select x-model="scheduleForm.platform_id" class="field">
+          <option value="">— Не вказано —</option>
+          <template x-for="p in platforms" :key="p.id">
+            <option :value="p.id" x-text="p.name + ' (' + p.type + ')'"></option>
+          </template>
+        </select>
+      </div>
+
+      <div class="md:col-span-2">
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">ЧАСТОТА</label>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+          <template x-for="preset in cronPresets" :key="preset.expr">
+            <button @click="scheduleForm.cron_expr = preset.expr"
+              :style="scheduleForm.cron_expr === preset.expr ? 'background:#13104a;border-color:#4f46e5;color:#a5b4fc;' : ''"
+              class="field text-left" style="font-size:12px;padding:6px 10px;cursor:pointer;"
+              x-text="preset.label"></button>
+          </template>
+        </div>
+        <div class="flex items-center gap-2">
+          <input x-model="scheduleForm.cron_expr" type="text"
+            placeholder="cron: 0 9 * * *"
+            class="field" style="font-family:monospace;flex:1;" />
+          <span style="font-size:12px;color:#475569;" x-text="cronPresets.find(p=>p.expr===scheduleForm.cron_expr)?.label || '(власний)'"></span>
+        </div>
+        <div style="font-size:11px;color:#334155;margin-top:4px;">
+          формат: хв год день_міс міс день_тижня &nbsp;·&nbsp; 0=Нд, 1=Пн...6=Сб &nbsp;·&nbsp; час UTC
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">
+          ШАБЛОН ТЕМИ
+          <span style="color:#334155;font-weight:400;margin-left:4px;">— підтримує <code>{date}</code> та <code>{weekday}</code></span>
+        </label>
+        <input x-model="scheduleForm.topic_template" type="text"
+          placeholder="напр. Головні новини крипторинку за {date}"
+          class="field" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">КЛЮЧОВІ СЛОВА</label>
+        <input x-model="scheduleForm.keywords" type="text"
+          placeholder="крипто, bitcoin, аналіз"
+          class="field" />
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">КОНТЕКСТ</label>
+        <input x-model="scheduleForm.extra" type="text"
+          placeholder="Тон, стиль, цільова аудиторія..."
+          class="field" />
+      </div>
+    </div>
+
+    <div class="flex gap-2 justify-end">
+      <button @click="showScheduleForm = false; scheduleModal.editing = null" class="btn-ghost">Скасувати</button>
+      <button @click="saveSchedule()"
+        :disabled="!scheduleForm.pipeline_id || !scheduleForm.name"
+        class="btn-primary">
+        <span x-text="scheduleModal.editing ? 'Зберегти' : '⏰ Створити розклад'"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Schedules list -->
+  <div>
+    <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:12px;">Активні розклади</div>
+
+    <div x-show="schedules.length === 0 && !showScheduleForm"
+      class="card p-12 text-center" style="border-style:dashed;">
+      <div style="font-size:32px;margin-bottom:12px;">⏰</div>
+      <div style="font-weight:600;color:#f1f5f9;margin-bottom:4px;">Розкладів ще немає</div>
+      <div style="font-size:13px;color:#475569;margin-bottom:16px;">Налаштуй автоматичну публікацію контенту за розкладом</div>
+      <button @click="openScheduleForm()" class="btn-primary">＋ Перший розклад</button>
+    </div>
+
+    <div class="space-y-3">
+      <template x-for="sched in schedules" :key="sched.id">
+        <div class="card p-4 space-y-3" :style="sched.active ? '' : 'opacity:.55'">
+          <div class="flex items-start justify-between gap-3">
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-0.5">
-                <span class="font-semibold" x-text="agent.name"></span>
-                <span class="text-xs bg-slate-700 px-2 py-0.5 rounded" x-text="agentTypeLabel(agent.type)"></span>
-                <span :class="'status-' + agent.status"
-                  class="text-xs px-2 py-0.5 rounded-full" x-text="sl(agent.status)"></span>
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span style="font-weight:600;font-size:14px;color:#f1f5f9;" x-text="sched.name"></span>
+                <span x-show="sched.active"
+                  style="font-size:11px;background:#052010;border:1px solid #064e2e;color:#34d399;padding:1px 8px;border-radius:999px;">активний</span>
+                <span x-show="!sched.active"
+                  style="font-size:11px;background:#0f172a;border:1px solid #1e293b;color:#475569;padding:1px 8px;border-radius:999px;">вимкнено</span>
               </div>
-              <div class="text-xs text-slate-400" x-text="agent.model"></div>
-              <div x-show="agent.system_prompt"
-                class="text-xs text-slate-500 mt-1 line-clamp-1" x-text="agent.system_prompt"></div>
+
+              <!-- Cron + pipeline -->
+              <div class="flex flex-wrap gap-x-4 gap-y-1" style="font-size:12px;color:#64748b;margin-bottom:6px;">
+                <span>🕐 <strong style="color:#a5b4fc;" x-text="sched.cron_human"></strong></span>
+                <span>📋 <span x-text="sched.pipeline_name"></span></span>
+                <span x-show="sched.platform_name">📡 <span x-text="sched.platform_name"></span></span>
+              </div>
+
+              <!-- Topic template -->
+              <div x-show="sched.topic_template"
+                style="font-size:12px;color:#94a3b8;background:#060b14;border:1px solid #1a2332;border-radius:6px;padding:5px 10px;display:inline-block;"
+                x-text="'📝 ' + sched.topic_template"></div>
             </div>
-            <div class="flex gap-2 shrink-0">
-              <button @click="openAgentModal(agent)"
-                class="text-xs px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                Редагувати
+
+            <!-- Actions -->
+            <div class="flex gap-1.5 shrink-0 flex-wrap justify-end">
+              <button @click="fireScheduleNow(sched)"
+                class="btn-sky" style="font-size:12px;padding:4px 10px;" title="Запустити зараз">
+                ▶ Зараз
               </button>
-              <button @click="deleteAgent(agent.id)"
-                class="text-xs px-3 py-1.5 bg-slate-700 hover:bg-red-700 rounded-lg transition-colors">
-                Видалити
+              <button @click="toggleSchedule(sched)"
+                :class="sched.active ? 'btn-ghost' : 'btn-success'"
+                style="font-size:12px;padding:4px 10px;">
+                <span x-text="sched.active ? '⏸ Пауза' : '▶ Увімкнути'"></span>
               </button>
+              <button @click="openScheduleForm(sched)"
+                class="btn-ghost" style="font-size:12px;padding:4px 10px;">Змінити</button>
+              <button @click="deleteSchedule(sched.id)"
+                class="btn-danger" style="font-size:12px;padding:4px 10px;">✕</button>
             </div>
           </div>
-        </template>
+
+          <!-- Last/Next run -->
+          <div class="flex gap-4 flex-wrap" style="font-size:12px;">
+            <div x-show="sched.last_run">
+              <span style="color:#334155;">Останній запуск: </span>
+              <span style="color:#64748b;" x-text="sched.last_run ? new Date(sched.last_run + 'Z').toLocaleString('uk') : '—'"></span>
+            </div>
+            <div x-show="sched.next_run && sched.active">
+              <span style="color:#334155;">Наступний: </span>
+              <span style="color:#4ade80;" x-text="sched.next_run ? new Date(sched.next_run + 'Z').toLocaleString('uk') : '—'"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Help block -->
+  <div class="card p-4 space-y-2" style="border-color:#1a2332;">
+    <div style="font-size:12px;font-weight:600;color:#475569;">ШАБЛОНИ ТЕМ — плейсхолдери</div>
+    <div class="grid grid-cols-2 gap-2" style="font-size:12px;color:#64748b;">
+      <div><code style="color:#a5b4fc;">{date}</code> → 04.04.2025</div>
+      <div><code style="color:#a5b4fc;">{weekday}</code> → Пн</div>
+    </div>
+    <div style="font-size:12px;color:#334155;">Приклад: <span style="color:#94a3b8;">«Топ криптоновини за {date}»</span></div>
+  </div>
+
+</div>
+
+<!-- ─────────────────────── VAULT (OBSIDIAN) ─────────────────────── -->
+<div x-show="currentTab === 'vault'" x-cloak class="space-y-6 max-w-2xl">
+
+  <!-- Status card -->
+  <div class="card p-5 space-y-4">
+    <div class="flex items-center justify-between">
+      <div style="font-size:15px;font-weight:700;color:#f1f5f9;">Obsidian Vault</div>
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full"
+          :style="vault.enabled ? 'background:#22c55e;box-shadow:0 0 6px #22c55e' : 'background:#475569'"></div>
+        <span style="font-size:12px;color:#64748b;" x-text="vault.enabled ? 'Підключено' : 'Не налаштовано'"></span>
+      </div>
+    </div>
+
+    <!-- Enabled state -->
+    <template x-if="vault.enabled">
+      <div class="space-y-3">
+        <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px 14px;">
+          <div style="font-size:11px;color:#475569;margin-bottom:4px;">VAULT PATH</div>
+          <div style="font-size:13px;color:#38bdf8;font-family:monospace;word-break:break-all;" x-text="vault.vault_path"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#a5b4fc;" x-text="vault.notes_count"></div>
+            <div style="font-size:11px;color:#475569;margin-top:4px;">Нотаток у vault</div>
+          </div>
+          <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:24px;font-weight:800;color:#4ade80;" x-text="jobs.filter(j=>j.status==='done').length"></div>
+            <div style="font-size:11px;color:#475569;margin-top:4px;">Jobs для синхронізації</div>
+          </div>
+        </div>
+        <button @click="syncAllToVault()" :disabled="vault._syncing"
+          class="btn-primary w-full" style="width:100%;text-align:center;">
+          <span x-show="!vault._syncing">🗃 Синхронізувати всі Jobs → Vault</span>
+          <span x-show="vault._syncing">⏳ Синхронізую...</span>
+        </button>
+      </div>
+    </template>
+
+    <!-- Disabled state -->
+    <template x-if="!vault.enabled">
+      <div class="space-y-4">
+        <div style="background:#2a1a00;border:1px solid #78350f;border-radius:8px;padding:12px;font-size:13px;color:#fcd34d;">
+          ⚠️ <strong>OBSIDIAN_VAULT_PATH</strong> не вказано у <code>.env</code>
+        </div>
+        <div style="font-size:13px;color:#94a3b8;line-height:1.6;">
+          Щоб підключити Obsidian:
+        </div>
+        <ol style="font-size:13px;color:#64748b;line-height:2;padding-left:20px;list-style:decimal;">
+          <li>Відкрий файл <code style="color:#a5b4fc;">.env</code> у папці проекту</li>
+          <li>Додай рядок:</li>
+        </ol>
+        <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:12px;font-family:monospace;font-size:13px;color:#38bdf8;">
+          OBSIDIAN_VAULT_PATH=C:/Users/ім'я/Documents/MyVault
+        </div>
+        <ol start="3" style="font-size:13px;color:#64748b;line-height:2;padding-left:20px;list-style:decimal;">
+          <li>Перезапусти сервер (<code>python main.py</code>)</li>
+          <li>Всі нові Jobs будуть автоматично зберігатись у vault</li>
+        </ol>
+      </div>
+    </template>
+  </div>
+
+  <!-- Graph view info -->
+  <div class="card p-5 space-y-3">
+    <div style="font-size:14px;font-weight:600;color:#f1f5f9;">Що буде у граф-вью Obsidian</div>
+    <div style="font-size:13px;color:#64748b;line-height:1.7;">
+      Кожен завершений Job автоматично стає вузлом у графі. Зв'язки формуються через wiki-links:
+    </div>
+    <div class="space-y-2" style="font-size:13px;">
+      <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px 14px;">
+        <div style="color:#a5b4fc;font-weight:600;margin-bottom:4px;">📁 Topics/</div>
+        <div style="color:#64748b;">Хаб-ноди для кожного ключового слова. Чим більше постів на тему — тим більший кластер.</div>
+      </div>
+      <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px 14px;">
+        <div style="color:#a5b4fc;font-weight:600;margin-bottom:4px;">📁 Jobs/</div>
+        <div style="color:#64748b;">Центральні ноди з повним виводом кожного агента. Посилаються на Topics і Pipelines.</div>
+      </div>
+      <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px 14px;">
+        <div style="color:#a5b4fc;font-weight:600;margin-bottom:4px;">📁 Published/</div>
+        <div style="color:#64748b;">Нотатки кожної публікації з датою та каналом.</div>
+      </div>
+      <div style="background:#060b14;border:1px solid #1a2332;border-radius:8px;padding:10px 14px;">
+        <div style="color:#a5b4fc;font-weight:600;margin-bottom:4px;">📁 Pipelines/</div>
+        <div style="color:#64748b;">Шаблони + всі запуски кожного пайплайну.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─────────────────────── AUTOBOT ─────────────────────── -->
+<div x-show="currentTab === 'autobot'" x-cloak class="space-y-5">
+
+  <!-- Empty state -->
+  <div x-show="autobots.length === 0" class="card p-10 text-center space-y-4">
+    <div style="font-size:48px;">🤖</div>
+    <div style="font-weight:700;font-size:20px;color:#f1f5f9;">Автобот Менеджер</div>
+    <div style="font-size:14px;color:#475569;max-width:420px;margin:0 auto;line-height:1.7;">
+      AI-агент що <strong style="color:#a5b4fc;">сам</strong> вирішує які теми запускати, коли генерувати нові ідеї та скільки задач тримати активними.<br>
+      Ти задаєш ціль — він думає і діє.
+    </div>
+    <button @click="openAutobotModal()" class="btn-primary" style="margin:0 auto;">🤖 Створити Автобота</button>
+  </div>
+
+  <!-- Autobot cards -->
+  <template x-for="bot in autobots" :key="bot.id">
+    <div class="card overflow-hidden" :style="bot.active ? 'border-color:#1e3a1e;' : 'border-color:#1a2332;'">
+
+      <!-- Header row -->
+      <div class="p-4 flex items-start gap-4">
+        <!-- Pulse indicator -->
+        <div class="relative shrink-0 mt-1">
+          <div class="w-3 h-3 rounded-full"
+            :style="bot.active ? 'background:#4ade80;box-shadow:0 0 8px #4ade80' : 'background:#334155'"></div>
+          <div x-show="bot.active" class="absolute inset-0 w-3 h-3 rounded-full"
+            style="background:#4ade80;opacity:.35;animation:ping 1.8s cubic-bezier(0,0,.2,1) infinite;border-radius:50%;"></div>
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <div style="font-weight:700;font-size:16px;color:#f1f5f9;" x-text="bot.name"></div>
+          <div style="font-size:12px;color:#64748b;margin-top:3px;line-height:1.5;"
+            x-text="bot.goal || 'Ціль не вказана'"></div>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <span style="font-size:11px;color:#334155;" x-text="'⏱ ' + bot.check_interval_minutes + ' хв'"></span>
+          <button @click="runAutobotNow(bot.id)" :disabled="bot._running"
+            class="btn-ghost" style="font-size:12px;padding:4px 10px;">
+            <span x-show="!bot._running">▷ Зараз</span>
+            <span x-show="bot._running">⏳</span>
+          </button>
+          <button @click="toggleAutobot(bot)"
+            :class="bot.active ? 'btn-danger' : 'btn-success'"
+            style="font-size:12px;padding:4px 12px;"
+            x-text="bot.active ? '⏸ Стоп' : '▶ Старт'">
+          </button>
+          <button @click="openAutobotModal(bot)" class="btn-ghost" style="font-size:12px;padding:4px 8px;">✎</button>
+          <button @click="deleteAutobot(bot.id)" class="btn-danger" style="font-size:12px;padding:4px 8px;">✕</button>
+        </div>
       </div>
 
-      <!-- Модалка агента -->
-      <div x-show="agentModal.open" x-cloak
-        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-        @click.self="agentModal.open = false">
-        <div class="bg-slate-800 rounded-xl w-full max-w-lg p-6 space-y-4">
-          <h3 class="font-semibold text-lg"
-            x-text="agentModal.editing ? 'Редагувати агента' : 'Новий агент'"></h3>
+      <!-- Stats row -->
+      <div class="grid grid-cols-4" style="border-top:1px solid #1a2332;">
+        <div class="p-3 text-center" style="border-right:1px solid #1a2332;">
+          <div style="font-size:10px;color:#334155;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;">Стратегії</div>
+          <div style="font-size:12px;color:#a5b4fc;font-weight:600;"
+            x-text="bot.strategy_names.length ? bot.strategy_names.join(', ') : 'всі активні'"></div>
+        </div>
+        <div class="p-3 text-center" style="border-right:1px solid #1a2332;">
+          <div style="font-size:10px;color:#334155;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;">Задач/цикл</div>
+          <div style="font-size:18px;font-weight:800;color:#f1f5f9;" x-text="bot.max_jobs_per_run"></div>
+        </div>
+        <div class="p-3 text-center" style="border-right:1px solid #1a2332;">
+          <div style="font-size:10px;color:#334155;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;">Остання активація</div>
+          <div style="font-size:12px;color:#64748b;"
+            x-text="bot.last_run ? new Date(bot.last_run+'Z').toLocaleTimeString('uk',{hour:'2-digit',minute:'2-digit'}) : '—'"></div>
+        </div>
+        <div class="p-3 text-center">
+          <div style="font-size:10px;color:#334155;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em;">Модель</div>
+          <div style="font-size:11px;color:#6366f1;font-family:monospace;"
+            x-text="(bot.model||'').split('/').pop().replace(':free','')"></div>
+        </div>
+      </div>
 
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Назва</label>
-            <input x-model="agentModal.form.name" type="text" placeholder="напр. Контент-письменник"
-              class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm text-slate-300 mb-1">Тип</label>
-              <select x-model="agentModal.form.type"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="researcher">🔍 Дослідник</option>
-                <option value="writer">✍️ Сценарист</option>
-                <option value="image">🖼 Зображення</option>
-                <option value="voice">🎙 Озвучка</option>
-                <option value="editor">✂️ Редактор</option>
-                <option value="publisher">📤 Публікатор</option>
-                <option value="custom">⚙️ Власний</option>
-              </select>
+      <!-- Last decision -->
+      <div x-show="bot.last_thinking" style="border-top:1px solid #1a2332;padding:12px 16px;background:#060b14;">
+        <div style="font-size:10px;color:#334155;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Останнє рішення</div>
+        <div style="font-size:13px;color:#94a3b8;line-height:1.5;font-style:italic;" x-text="'«' + bot.last_thinking + '»'"></div>
+        <div class="mt-2 space-y-1" x-show="(bot.last_actions||[]).length > 0">
+          <template x-for="(act, i) in (bot.last_actions||[])" :key="i">
+            <div style="font-size:12px;padding:3px 8px;border-radius:4px;display:flex;align-items:center;gap-6px;"
+              :style="act.error ? 'background:#1c0a0a;color:#f87171;' : act.skipped ? 'background:#111;color:#475569;' : act.type==='noop' ? 'background:#07090f;color:#334155;' : 'background:#052010;color:#6ee7b7;'">
+              <span x-text="({noop:'○ Нічого не треба', launch_topic:'▷ Запустив тему', approve_topic:'✓ Схвалив тему', generate_topics:'💡 Згенерував теми', create_job:'▷ Створив задачу'})[act.type] || act.type"></span>
+              <span x-show="act.topic" style="color:#64748b;" x-text="' — ' + act.topic"></span>
+              <span x-show="act.generated != null" x-text="' ×' + act.generated"></span>
+              <span x-show="act.error" x-text="' ⚠ ' + act.error"></span>
+              <span x-show="act.skipped"> (пропущено)</span>
+              <span x-show="act.reason && act.type === 'noop'" style="color:#334155;" x-text="' · ' + act.reason"></span>
             </div>
-            <div>
-              <label class="block text-sm text-slate-300 mb-1">Макс. паралельних задач</label>
-              <input x-model.number="agentModal.form.max_parallel_tasks" type="number" min="1" max="10"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
-            </div>
-          </div>
+          </template>
+        </div>
+      </div>
 
+    </div>
+  </template>
+
+  <!-- Live feed -->
+  <div x-show="autobotLog.length > 0" class="card p-4 space-y-2">
+    <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:4px;">
+      🔴 Live feed
+    </div>
+    <div class="space-y-2" style="max-height:280px;overflow-y:auto;">
+      <template x-for="(entry, i) in autobotLog.slice().reverse()" :key="i">
+        <div style="font-size:12px;border-left:2px solid #4f46e5;padding:6px 10px;background:#060b14;border-radius:0 6px 6px 0;">
+          <div class="flex items-center gap-2">
+            <span style="color:#6366f1;font-weight:600;" x-text="entry.manager_name"></span>
+            <span style="color:#334155;" x-text="entry.time"></span>
+          </div>
+          <div style="color:#94a3b8;margin-top:2px;font-style:italic;" x-text="entry.thinking"></div>
+          <div style="color:#475569;margin-top:2px;"
+            x-text="entry.actions.filter(a=>a.type!=='noop').map(a=>({launch_topic:'▷',approve_topic:'✓',generate_topics:'💡',create_job:'▷'})[a.type]||a.type).join(' ')  || '○ noop'">
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Create / Edit modal -->
+  <div x-show="autobotModal.open" x-cloak
+    class="fixed inset-0 flex items-center justify-center z-50 p-4"
+    style="background:rgba(0,0,0,.82);backdrop-filter:blur(4px);"
+    @click.self="autobotModal.open = false">
+    <div class="card w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 space-y-4" style="border-color:#2d3f52;">
+
+      <div style="font-size:18px;font-weight:700;color:#f1f5f9;"
+        x-text="autobotModal.editing ? '✎ Редагувати автобота' : '🤖 Новий Автобот'"></div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="field-label">Ім'я *</label>
+          <input x-model="autobotModal.form.name" type="text" class="field"
+            placeholder="напр. Контент-менеджер Фриланс">
+        </div>
+
+        <div>
+          <label class="field-label">Ціль та поведінка</label>
+          <textarea x-model="autobotModal.form.goal" class="field" rows="4" style="resize:vertical;"
+            placeholder="напр. Підтримувати 2-3 активних пости на день. Пріоритет — теми про фриланс та онлайн заробіток. Не запускати задачі якщо більше 3 вже виконуються. Раз на день генерувати нові теми якщо черга порожня."></textarea>
+          <div style="font-size:11px;color:#334155;margin-top:3px;">Чим детальніше — тим розумніше рішення AI</div>
+        </div>
+
+        <div>
+          <label class="field-label">Керує стратегіями</label>
+          <div class="mt-1 space-y-1 p-2 rounded-lg" style="background:#07090f;border:1px solid #1a2332;max-height:180px;overflow-y:auto;">
+            <div x-show="strategies.length === 0" style="font-size:13px;color:#334155;padding:4px;">
+              Стратегій немає — спочатку створи у вкладці «Стратегія»
+            </div>
+            <template x-for="s in strategies" :key="s.id">
+              <label class="flex items-start gap-2 cursor-pointer p-2 rounded hover:bg-opacity-40" style="hover:background:#0d1117;">
+                <input type="checkbox" :value="s.id"
+                  :checked="autobotModal.form.strategy_ids.includes(s.id)"
+                  @change="e => { if(e.target.checked) autobotModal.form.strategy_ids = [...autobotModal.form.strategy_ids, s.id]; else autobotModal.form.strategy_ids = autobotModal.form.strategy_ids.filter(id=>id!==s.id); }"
+                  class="mt-0.5 w-4 h-4 rounded accent-indigo-500 shrink-0">
+                <div>
+                  <div style="font-size:13px;color:#cbd5e1;" x-text="s.name"></div>
+                  <div style="font-size:11px;color:#475569;" x-text="s.niche"></div>
+                </div>
+              </label>
+            </template>
+          </div>
+          <div style="font-size:11px;color:#334155;margin-top:3px;">Якщо нічого не обрано — керує всіма активними стратегіями</div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="block text-sm text-slate-300 mb-1">Модель</label>
-            <select x-model="agentModal.form.model"
-              class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="qwen/qwen3-14b:free">Qwen3 14B (безкоштовна) ✅</option>
-              <option value="stepfun/step-3-mini:free">Step-3 Mini (безкоштовна) ✅</option>
-              <option value="qwen/qwen3.6-plus:free">Qwen3.6 Plus (безкоштовна)</option>
-              <option value="stepfun/step-3.5-flash:free">Step-3.5 Flash (безкоштовна)</option>
-              <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (безкоштовна)</option>
-              <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (безкоштовна)</option>
-              <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (безкоштовна)</option>
+            <label class="field-label">Перевірка</label>
+            <select x-model.number="autobotModal.form.check_interval_minutes" class="field">
+              <option value="5">5 хв (тест)</option>
+              <option value="15">15 хв</option>
+              <option value="30">30 хв</option>
+              <option value="60">1 год</option>
+              <option value="120">2 год</option>
             </select>
-            <input x-model="agentModal.form.model" type="text" placeholder="або вставте будь-який model ID з OpenRouter"
-              class="w-full mt-1.5 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
           </div>
-
           <div>
-            <label class="block text-sm text-slate-300 mb-1">Системний промпт</label>
-            <textarea x-model="agentModal.form.system_prompt" rows="4"
-              placeholder="Ти — експерт-дослідник контенту. Аналізуй задану тему та надавай..."
-              class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"></textarea>
+            <label class="field-label">Задач/цикл</label>
+            <select x-model.number="autobotModal.form.max_jobs_per_run" class="field">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+            </select>
           </div>
-
-          <div class="flex gap-2 justify-end">
-            <button @click="agentModal.open = false"
-              class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
-              Скасувати
-            </button>
-            <button @click="saveAgent()"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors">
-              Зберегти
-            </button>
+          <div>
+            <label class="field-label">Макс. паралельно</label>
+            <select x-model.number="autobotModal.form.max_concurrent_jobs" class="field">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+              <option value="10">10</option>
+            </select>
           </div>
         </div>
-      </div>
-    </div>
 
-<!-- ─── ПАЙПЛАЙНИ ─── -->
-    <div x-show="currentTab === 'pipelines'" x-cloak class="p-6 space-y-4">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Пайплайни</h1>
-        <button @click="openPipelineModal()"
-          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors">
-          + Новий пайплайн
+        <div>
+          <label class="field-label">Модель (мозок автобота)</label>
+          <select x-model="autobotModal.form.model" class="field">
+            <option value="qwen/qwen3.6-plus:free">qwen3.6-plus:free — рекомендовано</option>
+            <option value="stepfun/step-3.5-flash:free">step-3.5-flash:free — швидкий</option>
+            <option value="meta-llama/llama-3.3-70b-instruct:free">llama-3.3-70b:free</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button @click="autobotModal.open = false" class="btn-ghost">Скасувати</button>
+        <button @click="saveAutobot()" :disabled="!autobotModal.form.name" class="btn-primary">
+          <span x-text="autobotModal.editing ? 'Зберегти' : '🤖 Створити'"></span>
         </button>
       </div>
 
-      <div x-show="pipelines.length === 0" class="text-slate-500 text-sm">Пайплайнів ще немає.</div>
+    </div>
+  </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <template x-for="p in pipelines" :key="p.id">
-          <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 space-y-3">
-            <div class="flex items-start justify-between">
-              <div>
-                <div class="font-semibold" x-text="p.name"></div>
-                <div class="flex gap-2 mt-1">
-                  <span class="text-xs bg-slate-700 px-2 py-0.5 rounded" x-text="p.platform"></span>
-                  <span class="text-xs bg-slate-700 px-2 py-0.5 rounded" x-text="p.content_type"></span>
-                </div>
-              </div>
-              <div class="flex gap-1">
-                <button @click="openPipelineModal(p)"
-                  class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition-colors">Змінити</button>
-                <button @click="deletePipeline(p.id)"
-                  class="text-xs px-2 py-1 bg-slate-700 hover:bg-red-700 rounded transition-colors">Видалити</button>
-              </div>
+</div>
+
+<!-- ─────────────────────── STRATEGY ─────────────────────── -->
+<div x-show="currentTab === 'strategy'" x-cloak class="space-y-5">
+
+  <!-- Empty state -->
+  <div x-show="strategies.length === 0" class="card p-10 text-center space-y-3">
+    <div style="font-size:32px;">💡</div>
+    <div style="font-weight:600;color:#f1f5f9;">Стратегій ще немає</div>
+    <div style="font-size:13px;color:#475569;">Опиши нішу каналу, аудиторію і тон — AI генеруватиме теми сам</div>
+    <button @click="openStrategyModal()" class="btn-primary" style="margin:0 auto;">＋ Перша стратегія</button>
+  </div>
+
+  <!-- Strategy cards -->
+  <div x-show="strategies.length > 0" class="space-y-3">
+    <template x-for="strat in strategies" :key="strat.id">
+      <div class="card p-0 overflow-hidden" style="border-color:#1a2332;">
+
+        <!-- Strategy header -->
+        <div class="p-4 flex items-start justify-between gap-3"
+          style="cursor:pointer;"
+          @click="selectedStrategyId === strat.id ? selectedStrategyId = null : selectStrategy(strat.id)">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span style="font-weight:700;font-size:15px;color:#f1f5f9;" x-text="strat.name"></span>
+              <span x-show="strat.auto_approve" class="sb" style="background:#1e1b4b;color:#a5b4fc;border-color:#312e81;font-size:10px;">⚡ авто</span>
+              <span x-show="!strat.active" class="sb sb-error" style="font-size:10px;">вимкнено</span>
             </div>
-
-            <div x-show="p.description" class="text-xs text-slate-400" x-text="p.description"></div>
-
-            <div class="space-y-1">
-              <template x-for="(step, i) in p.steps" :key="i">
-                <div class="flex items-center gap-2 text-xs">
-                  <span class="w-5 h-5 rounded-full bg-indigo-800 text-indigo-200 flex items-center justify-center shrink-0 font-bold"
-                    x-text="i+1"></span>
-                  <span class="font-medium" x-text="step.step_name"></span>
-                  <span class="text-slate-500" x-text="'(' + agentTypeLabel(step.agent_type) + ')'"></span>
-                  <span x-show="step.review_required"
-                    class="bg-yellow-600 text-black px-1.5 rounded text-[10px] font-bold">перевірка</span>
-                  <span x-show="step.depends_on && step.depends_on.length"
-                    class="text-slate-600" x-text="'⟵ ' + step.depends_on.join(', ')"></span>
-                </div>
-              </template>
-            </div>
+            <div style="font-size:12px;color:#475569;margin-top:3px;" x-text="[strat.niche, strat.audience].filter(Boolean).join(' · ')"></div>
           </div>
-        </template>
-      </div>
-
-      <!-- Модалка пайплайну -->
-      <div x-show="pipelineModal.open" x-cloak
-        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto"
-        @click.self="pipelineModal.open = false">
-        <div class="bg-slate-800 rounded-xl w-full max-w-2xl p-6 space-y-4 my-8">
-          <h3 class="font-semibold text-lg"
-            x-text="pipelineModal.editing ? 'Редагувати пайплайн' : 'Новий пайплайн'"></h3>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="col-span-2">
-              <label class="block text-sm text-slate-300 mb-1">Назва</label>
-              <input x-model="pipelineModal.form.name" type="text" placeholder="YouTube відео"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="flex items-center gap-3" style="font-size:12px;color:#475569;">
+              <span x-show="strat.topic_counts.pending > 0" style="color:#fbbf24;" x-text="strat.topic_counts.pending + ' на розгляді'"></span>
+              <span x-show="strat.topic_counts.approved > 0" style="color:#34d399;" x-text="strat.topic_counts.approved + ' схвалено'"></span>
+              <span x-text="strat.topic_counts.launched + ' запущено'"></span>
             </div>
-            <div>
-              <label class="block text-sm text-slate-300 mb-1">Платформа</label>
-              <select x-model="pipelineModal.form.platform"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="any">будь-яка</option>
-                <option value="youtube">youtube</option>
-                <option value="telegram">telegram</option>
-                <option value="instagram">instagram</option>
-                <option value="tiktok">tiktok</option>
-                <option value="blog">blog</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm text-slate-300 mb-1">Тип контенту</label>
-              <select x-model="pipelineModal.form.content_type"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="text">текст</option>
-                <option value="video">відео</option>
-                <option value="image">зображення</option>
-                <option value="audio">аудіо</option>
-                <option value="mixed">змішаний</option>
-              </select>
-            </div>
-            <div class="col-span-2">
-              <label class="block text-sm text-slate-300 mb-1">Опис</label>
-              <input x-model="pipelineModal.form.description" type="text"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
-            </div>
+            <span style="color:#334155;font-size:14px;" x-text="selectedStrategyId === strat.id ? '▲' : '▼'"></span>
           </div>
+        </div>
 
-          <!-- Конструктор кроків -->
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-sm font-medium text-slate-300">Кроки</label>
-              <button @click="addStep()"
-                class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors">
-                + Додати крок
+        <!-- Expanded: pipeline info + generate controls -->
+        <div x-show="selectedStrategyId === strat.id" x-cloak>
+          <div style="border-top:1px solid #1a2332;padding:12px 16px;background:#060b14;">
+            <div class="flex items-center gap-3 flex-wrap">
+              <div style="font-size:12px;color:#475569;">
+                Pipeline: <span style="color:#818cf8;" x-text="strat.pipeline_name || '—'"></span>
+              </div>
+              <div style="font-size:12px;color:#475569;">
+                Платформа: <span style="color:#818cf8;" x-text="strat.platform_name || '—'"></span>
+              </div>
+              <div style="font-size:12px;color:#475569;">
+                <span x-text="strat.frequency_per_week"></span>× на тиждень
+              </div>
+              <div class="flex-1"></div>
+              <!-- Generate buttons -->
+              <button @click.stop="generateTopics(strat.id, 5)"
+                :disabled="generatingTopics === strat.id"
+                class="btn-primary" style="font-size:12px;padding:5px 12px;">
+                <span x-show="generatingTopics !== strat.id">💡 Генерувати 5 тем</span>
+                <span x-show="generatingTopics === strat.id">⏳ Генерую…</span>
               </button>
-            </div>
-
-            <div class="space-y-2">
-              <template x-for="(step, i) in pipelineModal.form.steps" :key="i">
-                <div class="bg-slate-900 rounded-lg p-3 space-y-2">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs text-slate-500 w-5 shrink-0" x-text="i+1 + '.'"></span>
-                    <input x-model="step.step_name" type="text" placeholder="назва_кроку"
-                      class="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500" />
-                    <select x-model="step.agent_type"
-                      class="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-indigo-500">
-                      <option value="researcher">🔍 Дослідник</option>
-                      <option value="writer">✍️ Сценарист</option>
-                      <option value="image">🖼 Зображення</option>
-                      <option value="voice">🎙 Озвучка</option>
-                      <option value="editor">✂️ Редактор</option>
-                      <option value="publisher">📤 Публікатор</option>
-                      <option value="custom">⚙️ Власний</option>
-                    </select>
-                    <label class="flex items-center gap-1 text-xs text-slate-400 whitespace-nowrap">
-                      <input type="checkbox" x-model="step.review_required" class="rounded" />
-                      перевірка
-                    </label>
-                    <button @click="pipelineModal.form.steps.splice(i, 1)"
-                      class="text-slate-500 hover:text-red-400 text-xl leading-none shrink-0">×</button>
-                  </div>
-                  <div>
-                    <input x-model="step._depends_raw" type="text"
-                      :placeholder="i > 0 ? 'залежить від (через кому: назва_кроку1, назва_кроку2)' : 'немає залежностей — перший крок'"
-                      @change="step.depends_on = step._depends_raw.split(',').map(s=>s.trim()).filter(Boolean)"
-                      class="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500" />
-                  </div>
-                </div>
-              </template>
+              <button @click.stop="generateTopics(strat.id, 10)"
+                :disabled="generatingTopics === strat.id"
+                class="btn-ghost" style="font-size:12px;padding:5px 12px;">10</button>
+              <button @click.stop="openStrategyModal(strat)" class="btn-ghost" style="font-size:12px;padding:5px 12px;">✎ Редагувати</button>
+              <button @click.stop="deleteStrategy(strat.id)" class="btn-danger" style="font-size:12px;padding:5px 10px;">✕</button>
             </div>
           </div>
 
-          <div class="flex gap-2 justify-end">
-            <button @click="pipelineModal.open = false"
-              class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
-              Скасувати
-            </button>
-            <button @click="savePipeline()"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors">
-              Зберегти
-            </button>
+          <!-- Topic queue -->
+          <div style="border-top:1px solid #1a2332;padding:12px 16px;" class="space-y-2">
+            <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px;">Черга тем</div>
+
+            <div x-show="strategyTopics.length === 0" style="font-size:13px;color:#334155;padding:8px 0;">
+              Тем ще немає — натисни «Генерувати» вище
+            </div>
+
+            <template x-for="topic in strategyTopics" :key="topic.id">
+              <div class="flex items-start gap-3 p-3 rounded-lg" style="background:#07090f;border:1px solid #1a2332;">
+                <div class="flex-1 min-w-0">
+                  <div style="font-size:13px;font-weight:500;color:#f1f5f9;line-height:1.4;" x-text="topic.topic"></div>
+                  <div x-show="topic.keywords" style="font-size:11px;color:#475569;margin-top:3px;" x-text="'🏷 ' + topic.keywords"></div>
+                  <div x-show="topic.job_id" style="font-size:11px;color:#4ade80;margin-top:2px;" x-text="'▷ Job ' + (topic.job_id || '').slice(0,8)"></div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <!-- Status badge -->
+                  <span class="sb"
+                    :class="topic.status === 'pending' ? 'sb-queued' : topic.status === 'approved' ? 'sb-done' : topic.status === 'launched' ? 'sb-running' : 'sb-error'"
+                    style="font-size:10px;"
+                    x-text="{ pending:'очікує', approved:'схвалено', rejected:'відхилено', launched:'запущено' }[topic.status] || topic.status">
+                  </span>
+                  <!-- Actions -->
+                  <template x-if="topic.status === 'pending'">
+                    <div class="flex gap-1">
+                      <button @click="approveTopic(topic.id)" class="btn-success" style="font-size:11px;padding:3px 8px;">✓</button>
+                      <button @click="rejectTopic(topic.id)" class="btn-danger" style="font-size:11px;padding:3px 8px;">✕</button>
+                    </div>
+                  </template>
+                  <template x-if="topic.status === 'approved'">
+                    <button @click="launchTopic(topic.id)" class="btn-primary" style="font-size:11px;padding:3px 8px;">▷ Запустити</button>
+                  </template>
+                  <button x-show="topic.status !== 'launched'" @click="deleteTopic(topic.id)"
+                    class="btn-ghost" style="font-size:11px;padding:3px 7px;color:#334155;">✕</button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
-      </div>
-    </div>
 
-<!-- ─── ПЛАТФОРМИ ─── -->
-    <div x-show="currentTab === 'platforms'" x-cloak class="p-6 space-y-4">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Платформи</h1>
-        <button @click="openPlatformModal()"
-          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors">
-          + Додати платформу
+      </div>
+    </template>
+  </div>
+
+  <!-- Strategy modal -->
+  <div x-show="strategyModal.open" x-cloak
+    class="fixed inset-0 flex items-center justify-center z-50 p-4"
+    style="background:rgba(0,0,0,.75);backdrop-filter:blur(4px);"
+    @click.self="strategyModal.open = false">
+    <div class="card w-full max-w-lg max-h-[88vh] overflow-y-auto p-6 space-y-4" style="border-color:#2d3f52;">
+      <div style="font-size:18px;font-weight:700;color:#f1f5f9;"
+        x-text="strategyModal.editing ? 'Редагувати стратегію' : 'Нова стратегія'"></div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="field-label">Назва стратегії *</label>
+          <input x-model="strategyModal.form.name" type="text" class="field" placeholder="напр. Telegram — Фриланс UA">
+        </div>
+        <div>
+          <label class="field-label">Ніша / Тема каналу</label>
+          <input x-model="strategyModal.form.niche" type="text" class="field" placeholder="напр. фриланс та онлайн заробіток">
+        </div>
+        <div>
+          <label class="field-label">Цільова аудиторія</label>
+          <input x-model="strategyModal.form.audience" type="text" class="field" placeholder="напр. фрілансери 25-35 років, початківці">
+        </div>
+        <div>
+          <label class="field-label">Контентні опори (через кому)</label>
+          <input x-model="strategyModal.form.content_pillars_str" type="text" class="field"
+            placeholder="напр. поради, кейси, помилки, мотивація">
+          <div style="font-size:11px;color:#334155;margin-top:3px;">Теми для генерації будуть варіюватись між цими опорами</div>
+        </div>
+        <div>
+          <label class="field-label">Тон та стиль</label>
+          <input x-model="strategyModal.form.tone" type="text" class="field" placeholder="напр. практичний, без води, з прикладами">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="field-label">Пайплайн *</label>
+            <select x-model="strategyModal.form.pipeline_id" class="field">
+              <option value="">— обери —</option>
+              <template x-for="p in pipelines" :key="p.id">
+                <option :value="p.id" x-text="p.name"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Платформа</label>
+            <select x-model="strategyModal.form.platform_id" class="field">
+              <option value="">— опційно —</option>
+              <template x-for="p in platforms" :key="p.id">
+                <option :value="p.id" x-text="p.name"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Частота (постів на тиждень)</label>
+          <input x-model.number="strategyModal.form.frequency_per_week" type="number" min="1" max="14" class="field" style="max-width:120px;">
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" x-model="strategyModal.form.auto_approve" class="w-4 h-4 rounded accent-indigo-500">
+            <span style="font-size:13px;color:#94a3b8;">Автозапуск — запускати згенеровані теми одразу без підтвердження</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button @click="strategyModal.open = false" class="btn-ghost">Скасувати</button>
+        <button @click="saveStrategy()"
+          :disabled="!strategyModal.form.name || !strategyModal.form.pipeline_id"
+          class="btn-primary">
+          <span x-text="strategyModal.editing ? 'Зберегти' : '💡 Створити'"></span>
         </button>
       </div>
-
-      <div x-show="platforms.length === 0" class="text-slate-500 text-sm">Платформ ще немає.</div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <template x-for="p in platforms" :key="p.id">
-          <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 space-y-3">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="font-semibold" x-text="p.name"></div>
-                <div class="flex gap-2 mt-1">
-                  <span class="text-xs bg-slate-700 px-2 py-0.5 rounded" x-text="p.type"></span>
-                  <span x-show="p.auto_publish"
-                    class="text-xs bg-emerald-700 text-emerald-200 px-2 py-0.5 rounded">автопублікація</span>
-                  <span x-show="!p.active"
-                    class="text-xs bg-red-800 text-red-200 px-2 py-0.5 rounded">неактивна</span>
-                </div>
-              </div>
-              <div class="flex gap-1">
-                <button @click="openPlatformModal(p)"
-                  class="text-xs px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded transition-colors">Змінити</button>
-                <button @click="deletePlatform(p.id)"
-                  class="text-xs px-2 py-1 bg-slate-700 hover:bg-red-700 rounded transition-colors">Видалити</button>
-              </div>
-            </div>
-            <!-- Показуємо channel_id якщо є -->
-            <div x-show="p.credentials && p.credentials.channel_id"
-              class="flex items-center gap-2 text-xs">
-              <span class="text-slate-500">Канал:</span>
-              <span class="text-sky-400 font-mono" x-text="p.credentials && p.credentials.channel_id"></span>
-              <span x-show="p.credentials && p.credentials.channel_id === '@your_channel'"
-                class="text-yellow-400">⚠️ встанови реальний канал!</span>
-            </div>
-            <div x-show="p.credentials && p.credentials.bot_token"
-              class="text-xs text-slate-600">🔑 bot_token: ***</div>
-          </div>
-        </template>
-      </div>
-
-      <!-- Модалка платформи -->
-      <div x-show="platformModal.open" x-cloak
-        class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-        @click.self="platformModal.open = false">
-        <div class="bg-slate-800 rounded-xl w-full max-w-lg p-6 space-y-4">
-          <h3 class="font-semibold text-lg"
-            x-text="platformModal.editing ? 'Редагувати платформу' : 'Нова платформа'"></h3>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div class="col-span-2">
-              <label class="block text-sm text-slate-300 mb-1">Назва</label>
-              <input x-model="platformModal.form.name" type="text" placeholder="Мій YouTube канал"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
-            </div>
-            <div class="col-span-2">
-              <label class="block text-sm text-slate-300 mb-1">Тип</label>
-              <select x-model="platformModal.form.type"
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                <option value="youtube">YouTube</option>
-                <option value="telegram">Telegram</option>
-                <option value="instagram">Instagram</option>
-                <option value="tiktok">TikTok</option>
-                <option value="blog">Blog</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Telegram: спеціальні поля -->
-          <template x-if="platformModal.form.type === 'telegram'">
-            <div class="space-y-3">
-              <div>
-                <label class="block text-sm text-slate-300 mb-1">
-                  Канал / чат ID
-                  <span class="text-slate-500 font-normal ml-1">(@my_channel або -100xxxxxxxxxx)</span>
-                </label>
-                <input x-model="platformModal.form.tg_channel_id" type="text"
-                  placeholder="@my_channel"
-                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500" />
-              </div>
-              <div>
-                <label class="block text-sm text-slate-300 mb-1">
-                  Bot Token
-                  <span class="text-slate-500 font-normal ml-1">(від @BotFather — залиш порожнім щоб не змінювати)</span>
-                </label>
-                <input x-model="platformModal.form.tg_bot_token" type="password"
-                  placeholder="7xxxxxxxxx:AAxxxxxxxxx або залиш порожнім"
-                  class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500" />
-                <div class="text-xs text-slate-500 mt-1">
-                  Якщо порожньо — використовується TELEGRAM_BOT_TOKEN з .env файлу
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- Інші платформи: JSON -->
-          <template x-if="platformModal.form.type !== 'telegram'">
-            <div>
-              <label class="block text-sm text-slate-300 mb-1">Облікові дані (JSON)</label>
-              <textarea x-model="platformModal.form.credentials_raw" rows="3"
-                placeholder='{"api_key": "...", "channel_id": "..."}'
-                class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500"></textarea>
-            </div>
-          </template>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-1">Налаштування (JSON)</label>
-            <textarea x-model="platformModal.form.settings_raw" rows="2"
-              placeholder='{"language": "uk", "timezone": "Europe/Kyiv"}'
-              class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-indigo-500"></textarea>
-          </div>
-
-          <label class="flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" x-model="platformModal.form.auto_publish" class="rounded" />
-            Автопублікація (без ручного схвалення)
-          </label>
-
-          <div class="flex gap-2 justify-end">
-            <button @click="platformModal.open = false"
-              class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">
-              Скасувати
-            </button>
-            <button @click="savePlatform()"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors">
-              Зберегти
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
+  </div>
+
+</div>
 
   </main>
 </div>
+</div>
 
-<!-- ═══════════ ALPINE.JS ═══════════ -->
+<!-- ═══════════════════════════════ TOASTS ═══════════════════════════════ -->
+<div class="fixed bottom-5 right-5 z-50 space-y-2" style="pointer-events:none;" x-data>
+  <template x-for="t in $store.toasts.list" :key="t.id">
+    <div :class="['toast-enter', t.leaving ? 'toast-leave' : '']"
+      style="pointer-events:auto;max-width:340px;border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px;font-size:13px;"
+      :style="t.type==='error' ? 'background:#1c0a0a;border:1px solid #450a0a;color:#fca5a5;' : t.type==='warn' ? 'background:#2a1a00;border:1px solid #78350f;color:#fcd34d;' : 'background:#052010;border:1px solid #064e2e;color:#6ee7b7;'">
+      <span x-text="t.type==='error' ? '✕' : t.type==='warn' ? '⚠' : '✓'"
+        style="font-weight:700;flex-shrink:0;margin-top:1px;"></span>
+      <span x-text="t.msg" style="line-height:1.4;flex:1;"></span>
+    </div>
+  </template>
+</div>
+
+<!-- ═══════════════════════════════ ALPINE.JS ═══════════════════════════════ -->
 <script>
+document.addEventListener('alpine:init', () => {
+  Alpine.store('toasts', {
+    list: [],
+    _id: 0,
+    show(msg, type = 'success', duration = 4000) {
+      const id = ++this._id;
+      this.list.push({ id, msg, type, leaving: false });
+      setTimeout(() => {
+        const t = this.list.find(x => x.id === id);
+        if (t) t.leaving = true;
+        setTimeout(() => { this.list = this.list.filter(x => x.id !== id); }, 300);
+      }, duration);
+    }
+  });
+});
+
 function app() {
   return {
     currentTab: 'dashboard',
     wsConnected: false,
+    showNewJobForm: false,
 
     tabs: [
-      { id: 'dashboard', icon: '📊', label: 'Дашборд' },
-      { id: 'review',    icon: '🔍', label: 'Перевірка' },
-      { id: 'newjob',   icon: '▶',  label: 'Задачі' },
-      { id: 'agents',   icon: '🤖', label: 'Агенти' },
-      { id: 'pipelines',icon: '🔗', label: 'Пайплайни' },
-      { id: 'platforms', icon: '📡', label: 'Платформи' },
+      { id: 'dashboard', icon: '◈',  label: 'Дашборд',   fullLabel: 'Дашборд' },
+      { id: 'review',    icon: '◉',  label: 'Перевірка', fullLabel: 'Черга перевірки' },
+      { id: 'newjob',    icon: '▷',  label: 'Задачі',    fullLabel: 'Задачі' },
+      { id: 'agents',    icon: '⬡',  label: 'Агенти',    fullLabel: 'Агенти' },
+      { id: 'pipelines', icon: '⟁',  label: 'Пайплайни', fullLabel: 'Пайплайни' },
+      { id: 'platforms', icon: '◎',  label: 'Платформи', fullLabel: 'Платформи' },
+      { id: 'schedule',  icon: '⏰',  label: 'Розклад',   fullLabel: 'Розклад публікацій' },
+      { id: 'autobot',   icon: '🤖',  label: 'Автобот',   fullLabel: 'Автобот Менеджер' },
+      { id: 'strategy',  icon: '💡',  label: 'Стратегія', fullLabel: 'Стратегія контенту' },
+      { id: 'vault',     icon: '🗃',  label: 'Сховище',   fullLabel: 'Obsidian Сховище' },
     ],
 
     agents: [], jobs: [], pipelines: [], platforms: [], reviewTasks: [],
+    vault: { enabled: false, vault_path: null, notes_count: 0, _syncing: false },
+    botControl: { active: false, admin_chat_id: null, token_set: false, tip: null },
+    autobots: [],
+    autobotLog: [],
+    autobotModal: { open: false, editing: null, form: { name:'', goal:'', strategy_ids:[], model:'qwen/qwen3.6-plus:free', check_interval_minutes:30, max_jobs_per_run:2, max_concurrent_jobs:3 } },
+
+    strategies: [],
+    selectedStrategyId: null,
+    strategyTopics: [],
+    generatingTopics: null,
+    strategyModal: { open: false, editing: null, form: { name:'', niche:'', audience:'', content_pillars_str:'', tone:'', pipeline_id:'', platform_id:'', frequency_per_week:3, auto_approve:false } },
+    schedules: [],
+    showScheduleForm: false,
+    scheduleModal: { editing: null },
+    scheduleForm: { name: '', pipeline_id: '', platform_id: '', cron_expr: '0 9 * * *', topic_template: '', keywords: '', extra: '' },
+    cronPresets: [
+      { expr: '0 9 * * *',     label: 'Щодня о 9:00' },
+      { expr: '0 18 * * *',    label: 'Щодня о 18:00' },
+      { expr: '0 9 * * 1',     label: 'Щопонеділка о 9:00' },
+      { expr: '0 9 * * 1,4',   label: 'Пн і Чт о 9:00' },
+      { expr: '0 9 * * 1,3,5', label: 'Пн, Ср, Пт' },
+      { expr: '0 10 * * 1-5',  label: 'Пн–Пт о 10:00' },
+      { expr: '0 12 * * 6',    label: 'Щосуботи о 12:00' },
+      { expr: '* * * * *',     label: '⚡ Щохвилини (тест)' },
+    ],
 
     get reviewCount() { return this.reviewTasks.length; },
 
     jobForm: { pipeline_id: '', topic: '', keywords: '', platform_id: '', extra: '' },
-
     agentModal:    { open: false, editing: null, form: {} },
     agentDetail:   { open: false, agent: null, tasks: [] },
     pipelineModal: { open: false, editing: null, form: { steps: [] } },
     platformModal: { open: false, editing: null, form: {} },
     taskModal:     { open: false, tasks: [] },
 
-    // ── Переклад статусів ─────────────────────────────────────────────────────
+    toast(msg, type = 'success') { Alpine.store('toasts').show(msg, type); },
+
+    // ── Status labels ────────────────────────────────────────────────────────
     sl(status) {
-      const map = {
-        idle: 'вільний', busy: 'зайнятий', error: 'помилка', offline: 'офлайн',
-        pending: 'очікує', queued: 'в черзі', running: 'виконується',
-        waiting_review: 'на перевірці', approved: 'схвалено',
-        rejected: 'відхилено', done: 'готово', stopped: 'зупинено',
+      const m = {
+        idle:'вільний', busy:'зайнятий', error:'помилка', offline:'офлайн',
+        pending:'очікує', queued:'в черзі', running:'виконується',
+        waiting_review:'на перевірці', approved:'схвалено',
+        rejected:'відхилено', done:'готово', stopped:'зупинено',
       };
-      return map[status] || status;
+      return m[status] || status;
     },
-
     agentTypeLabel(type) {
-      const map = {
-        researcher: '🔍 Дослідник', writer: '✍️ Сценарист',
-        image: '🖼 Зображення', voice: '🎙 Озвучка',
-        editor: '✂️ Редактор', publisher: '📤 Публікатор', custom: '⚙️ Власний',
+      const m = {
+        researcher:'🔍 Дослідник', writer:'✍️ Сценарист',
+        image:'🖼 Зображення', voice:'🎙 Озвучка',
+        editor:'✂️ Редактор', publisher:'📤 Публікатор', custom:'⚙️ Власний',
       };
-      return map[type] || type;
+      return m[type] || type;
     },
 
-    // ── Ініціалізація ─────────────────────────────────────────────────────────
+    // ── Init ─────────────────────────────────────────────────────────────────
     async init() {
       await this.fetchAll();
       this.initWS();
       setInterval(() => this.fetchAll(), 8000);
     },
-
     async fetchAll() {
       await Promise.all([
         this.fetchAgents(), this.fetchJobs(),
         this.fetchPipelines(), this.fetchPlatforms(), this.fetchReview(),
+        this.fetchSchedules(), this.fetchVaultStatus(), this.fetchBotControlStatus(),
+        this.fetchStrategies(), this.fetchAutobots(),
       ]);
     },
+    async fetchSchedules() { this.schedules = await this.get('/api/schedules'); },
 
+    openScheduleForm(sched = null) {
+      this.scheduleModal.editing = sched;
+      if (sched) {
+        this.scheduleForm = {
+          name: sched.name, pipeline_id: sched.pipeline_id, platform_id: sched.platform_id || '',
+          cron_expr: sched.cron_expr, topic_template: sched.topic_template,
+          keywords: sched.keywords, extra: sched.extra,
+        };
+      } else {
+        this.scheduleForm = { name: '', pipeline_id: '', platform_id: '', cron_expr: '0 9 * * *', topic_template: '', keywords: '', extra: '' };
+      }
+      this.showScheduleForm = true;
+    },
+    async saveSchedule() {
+      const f = this.scheduleForm;
+      const result = this.scheduleModal.editing
+        ? await this.put(`/api/schedules/${this.scheduleModal.editing.id}`, f)
+        : await this.post('/api/schedules', f);
+      if (result) {
+        this.showScheduleForm = false;
+        this.scheduleModal.editing = null;
+        this.fetchSchedules();
+        this.toast(this.scheduleModal.editing ? 'Розклад оновлено' : 'Розклад створено ⏰');
+      }
+    },
+    async toggleSchedule(sched) {
+      const r = await this.post(`/api/schedules/${sched.id}/toggle`, {});
+      if (r) { this.fetchSchedules(); this.toast(r.active ? 'Розклад увімкнено' : 'Розклад на паузі', r.active ? 'success' : 'warn'); }
+    },
+    async fireScheduleNow(sched) {
+      const r = await this.post(`/api/schedules/${sched.id}/fire`, {});
+      if (r?.ok) {
+        this.fetchJobs(); this.fetchSchedules();
+        this.toast(`Задачу запущено: ${sched.name}`);
+        this.currentTab = 'dashboard';
+      }
+    },
+    async deleteSchedule(id) {
+      if (!confirm('Видалити розклад?')) return;
+      await this.del(`/api/schedules/${id}`); this.fetchSchedules(); this.toast('Розклад видалено', 'warn');
+    },
+
+    // ── Autobots ─────────────────────────────────────────────────────────────
+    async fetchAutobots() { this.autobots = await this.get('/api/auto-managers'); },
+    async toggleAutobot(bot) {
+      const r = await this.post(`/api/auto-managers/${bot.id}/toggle`, {});
+      if (r) { await this.fetchAutobots(); this.toast(r.active ? '🤖 Автобот активовано!' : 'Автобот зупинено', r.active ? 'success' : 'warn'); }
+    },
+    async runAutobotNow(id) {
+      const bot = this.autobots.find(b => b.id === id);
+      if (bot) bot._running = true;
+      const r = await this.post(`/api/auto-managers/${id}/run`, {});
+      if (r?.ok) this.toast('🤖 Цикл запущено — результат прийде через WebSocket...');
+      // _running cleared when auto_manager_decision WS event arrives, or after 120s fallback
+      setTimeout(async () => { if (bot) bot._running = false; await this.fetchAutobots(); }, 120000);
+    },
+    async deleteAutobot(id) {
+      if (!confirm('Видалити автобота?')) return;
+      await this.del(`/api/auto-managers/${id}`); await this.fetchAutobots(); this.toast('Автобота видалено', 'warn');
+    },
+    openAutobotModal(bot = null) {
+      this.autobotModal.editing = bot;
+      this.autobotModal.form = bot ? {
+        name: bot.name, goal: bot.goal,
+        strategy_ids: [...(bot.strategy_ids || [])],
+        model: bot.model,
+        check_interval_minutes: bot.check_interval_minutes,
+        max_jobs_per_run: bot.max_jobs_per_run,
+        max_concurrent_jobs: bot.max_concurrent_jobs,
+      } : { name:'', goal:'', strategy_ids:[], model:'qwen/qwen3.6-plus:free', check_interval_minutes:30, max_jobs_per_run:2, max_concurrent_jobs:3 };
+      this.autobotModal.open = true;
+    },
+    async saveAutobot() {
+      const r = this.autobotModal.editing
+        ? await this.put(`/api/auto-managers/${this.autobotModal.editing.id}`, this.autobotModal.form)
+        : await this.post('/api/auto-managers', this.autobotModal.form);
+      if (r) { this.autobotModal.open = false; await this.fetchAutobots(); this.toast(this.autobotModal.editing ? 'Автобота оновлено' : '🤖 Автобота створено!'); }
+    },
+
+    async fetchBotControlStatus() {
+      const s = await this.get('/api/bot-control/status');
+      if (s && typeof s === 'object') Object.assign(this.botControl, s);
+    },
+
+    // ── Strategies ───────────────────────────────────────────────────────────
+    async fetchStrategies() { this.strategies = await this.get('/api/strategies'); },
+    async selectStrategy(id) {
+      this.selectedStrategyId = id;
+      this.strategyTopics = await this.get(`/api/strategies/${id}/topics`);
+    },
+    async generateTopics(stratId, count) {
+      this.generatingTopics = stratId;
+      const r = await this.post(`/api/strategies/${stratId}/generate-topics?count=${count}`, {});
+      this.generatingTopics = null;
+      if (r) {
+        if (r.auto_approve) {
+          this.toast(`⚡ Згенеровано і запущено ${r.launched} тем!`);
+          this.fetchJobs();
+        } else {
+          this.toast(`💡 Згенеровано ${r.generated} тем — схвали потрібні`);
+        }
+        await this.selectStrategy(stratId);
+        await this.fetchStrategies();
+      }
+    },
+    async approveTopic(id) {
+      const r = await this.post(`/api/topics/${id}/approve`, {});
+      if (r) { await this.selectStrategy(this.selectedStrategyId); await this.fetchStrategies(); this.toast('Тему схвалено ✓'); }
+    },
+    async rejectTopic(id) {
+      const r = await this.post(`/api/topics/${id}/reject`, {});
+      if (r) { await this.selectStrategy(this.selectedStrategyId); await this.fetchStrategies(); this.toast('Тему відхилено', 'warn'); }
+    },
+    async launchTopic(id) {
+      const r = await this.post(`/api/topics/${id}/launch`, {});
+      if (r?.ok) {
+        await this.selectStrategy(this.selectedStrategyId); await this.fetchStrategies(); this.fetchJobs();
+        this.toast('Задачу запущено!'); this.currentTab = 'dashboard';
+      }
+    },
+    async deleteTopic(id) {
+      await this.del(`/api/topics/${id}`);
+      await this.selectStrategy(this.selectedStrategyId); await this.fetchStrategies();
+    },
+    openStrategyModal(strat = null) {
+      this.strategyModal.editing = strat;
+      this.strategyModal.form = strat ? {
+        name: strat.name, niche: strat.niche, audience: strat.audience,
+        content_pillars_str: (strat.content_pillars || []).join(', '),
+        tone: strat.tone, pipeline_id: strat.pipeline_id || '',
+        platform_id: strat.platform_id || '',
+        frequency_per_week: strat.frequency_per_week, auto_approve: strat.auto_approve,
+      } : { name:'', niche:'', audience:'', content_pillars_str:'', tone:'', pipeline_id:'', platform_id:'', frequency_per_week:3, auto_approve:false };
+      this.strategyModal.open = true;
+    },
+    async saveStrategy() {
+      const f = { ...this.strategyModal.form };
+      f.content_pillars = (f.content_pillars_str || '').split(',').map(s => s.trim()).filter(Boolean);
+      delete f.content_pillars_str;
+      const r = this.strategyModal.editing
+        ? await this.put(`/api/strategies/${this.strategyModal.editing.id}`, f)
+        : await this.post('/api/strategies', f);
+      if (r) {
+        this.strategyModal.open = false;
+        await this.fetchStrategies();
+        this.toast(this.strategyModal.editing ? 'Стратегію оновлено' : 'Стратегію створено 💡');
+      }
+    },
+    async deleteStrategy(id) {
+      if (!confirm('Видалити стратегію та всі її теми?')) return;
+      await this.del(`/api/strategies/${id}`);
+      if (this.selectedStrategyId === id) { this.selectedStrategyId = null; this.strategyTopics = []; }
+      await this.fetchStrategies(); this.toast('Стратегію видалено', 'warn');
+    },
+
+    async fetchVaultStatus() {
+      const s = await this.get('/api/obsidian/status');
+      if (s && typeof s === 'object') Object.assign(this.vault, s);
+    },
+    async syncAllToVault() {
+      this.vault._syncing = true;
+      const r = await this.post('/api/obsidian/sync-all', {});
+      this.vault._syncing = false;
+      if (r?.ok) {
+        this.toast(`Синхронізовано ${r.synced} нотаток у Obsidian`);
+        this.fetchVaultStatus();
+      }
+    },
     async fetchAgents()    { this.agents    = await this.get('/api/agents'); },
     async fetchJobs()      { this.jobs      = await this.get('/api/jobs'); },
     async fetchPipelines() { this.pipelines = await this.get('/api/pipelines'); },
@@ -914,21 +1894,33 @@ function app() {
       this.reviewTasks = tasks.map(t => ({ ...t, _comment: '' }));
     },
 
-    // ── HTTP хелпери ──────────────────────────────────────────────────────────
+    // ── HTTP ─────────────────────────────────────────────────────────────────
     async get(url) {
       try { const r = await fetch(url); return r.ok ? r.json() : []; }
       catch { return []; }
     },
     async post(url, body) {
-      const r = await fetch(url, { method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) { const e = await r.json(); alert(e.detail || 'Помилка'); return null; }
+      const r = await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        this.toast(e.detail || 'Помилка запиту', 'error');
+        return null;
+      }
       return r.json();
     },
     async put(url, body) {
-      const r = await fetch(url, { method: 'PUT',
-        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) { const e = await r.json(); alert(e.detail || 'Помилка'); return null; }
+      const r = await fetch(url, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        this.toast(e.detail || 'Помилка запиту', 'error');
+        return null;
+      }
       return r.json();
     },
     async del(url) {
@@ -942,13 +1934,48 @@ function app() {
       ws.onclose = () => { this.wsConnected = false; setTimeout(() => this.initWS(), 3000); };
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
-        if (['task_update', 'job_update'].includes(msg.type)) {
+        if (['task_update', 'job_update', 'telegram_posted'].includes(msg.type)) {
           this.fetchJobs(); this.fetchAgents(); this.fetchReview();
+        }
+        if (msg.type === 'task_update' && msg.status === 'waiting_review') {
+          const label = msg.step_name || 'крок';
+          if (this.botControl.active) {
+            this.toast(`📱 Review: «${label}» — перевір Telegram`, 'warn');
+          } else {
+            this.toast(`🔍 Review: «${label}» очікує на перевірку`, 'warn');
+          }
+        }
+        if (msg.type === 'task_update' && msg.status === 'approved') {
+          this.toast(`✅ «${msg.step_name || 'крок'}» схвалено`);
+        }
+        if (msg.type === 'telegram_posted') {
+          this.toast(`✅ Пост опубліковано у ${msg.channel}`);
+        }
+        if (msg.type === 'job_update' && msg.status === 'done') {
+          this.toast('Задача завершена!');
+        }
+        if (msg.type === 'auto_manager_decision') {
+          this.autobotLog.push({
+            manager_name: msg.manager_name,
+            thinking: msg.thinking,
+            actions: msg.actions || [],
+            time: new Date().toLocaleTimeString('uk', { hour:'2-digit', minute:'2-digit' }),
+          });
+          if (this.autobotLog.length > 20) this.autobotLog.shift();
+          // Clear spinner on the bot that just finished
+          const finishedBot = this.autobots.find(b => b.id === msg.manager_id);
+          if (finishedBot) finishedBot._running = false;
+          this.fetchAutobots(); this.fetchJobs(); this.fetchStrategies();
+          const launched = (msg.actions || []).filter(a => ['launch_topic','create_job'].includes(a.type) && !a.skipped && !a.error).length;
+          const generated = (msg.actions || []).filter(a => a.type === 'generate_topics').reduce((s, a) => s + (a.generated || 0), 0);
+          if (launched > 0) this.toast(`🤖 ${msg.manager_name}: запустив ${launched} задач`);
+          else if (generated > 0) this.toast(`🤖 ${msg.manager_name}: згенеровано ${generated} тем`, 'warn');
+          else this.toast(`🤖 ${msg.manager_name}: ${(msg.thinking||'').slice(0,55) || 'цикл завершено'}`, 'warn');
         }
       };
     },
 
-    // ── Задачі ────────────────────────────────────────────────────────────────
+    // ── Jobs ─────────────────────────────────────────────────────────────────
     async startNewJob() {
       const created = await this.post('/api/jobs', {
         pipeline_id: this.jobForm.pipeline_id,
@@ -961,14 +1988,20 @@ function app() {
       const started = await this.post(`/api/jobs/${created.id}/start`, {});
       if (started) {
         this.jobForm = { pipeline_id: '', topic: '', keywords: '', platform_id: '', extra: '' };
+        this.showNewJobForm = false;
         this.fetchJobs();
         this.currentTab = 'dashboard';
+        this.toast('Задача запущена!');
       }
     },
-    async startJob(id) { await this.post(`/api/jobs/${id}/start`, {}); this.fetchJobs(); },
-    async stopJob(id)  {
+    async startJob(id) {
+      const r = await this.post(`/api/jobs/${id}/start`, {});
+      if (r) { this.fetchJobs(); this.toast('Задача запущена!'); }
+    },
+    async stopJob(id) {
       if (!confirm('Зупинити цю задачу?')) return;
-      await this.post(`/api/jobs/${id}/stop`, {}); this.fetchJobs();
+      const r = await this.post(`/api/jobs/${id}/stop`, {});
+      if (r) { this.fetchJobs(); this.toast('Задача зупинена', 'warn'); }
     },
     async deleteJob(id) {
       if (!confirm('Видалити задачу разом з усіма кроками?')) return;
@@ -980,45 +2013,54 @@ function app() {
     },
 
     hasTelegramPlatform(job) {
-      const pid = job.initial_input && job.initial_input.platform_id;
+      const pid = job.initial_input?.platform_id;
       if (!pid) return false;
       const p = this.platforms.find(p => p.id === pid);
       return p && p.type === 'telegram';
     },
 
     async sendToTelegram(job) {
+      // Check channel_id before sending
+      const pid = job.initial_input?.platform_id;
+      const platform = this.platforms.find(p => p.id === pid);
+      const channelId = platform?.credentials?.channel_id;
+      if (!channelId || channelId === '@your_channel' || channelId === '@your_channel_name') {
+        this.toast(`Встанови реальний channel_id у налаштуваннях платформи (зараз: "${channelId || 'не вказано'}")`, 'error');
+        return;
+      }
+
       job._sending = true;
       const result = await this.post(`/api/jobs/${job.id}/send-telegram`, {});
       job._sending = false;
-      if (result && result.ok) {
-        alert(`✅ Пост відправлено у ${result.channel}`);
+      if (result?.ok) {
+        this.toast(`Пост відправлено у ${result.channel || channelId}`);
       }
       this.fetchJobs();
     },
 
-    // ── Перевірка ─────────────────────────────────────────────────────────────
+    // ── Review ────────────────────────────────────────────────────────────────
     async approveTask(task) {
-      await this.post(`/api/tasks/${task.id}/approve`, { comment: task._comment || '' });
-      this.fetchReview(); this.fetchJobs();
+      const r = await this.post(`/api/tasks/${task.id}/approve`, { comment: task._comment || '' });
+      if (r) { this.fetchReview(); this.fetchJobs(); this.toast('Крок схвалено'); }
     },
     async rejectTask(task) {
-      await this.post(`/api/tasks/${task.id}/reject`, { comment: task._comment || '' });
-      this.fetchReview(); this.fetchJobs();
+      const r = await this.post(`/api/tasks/${task.id}/reject`, { comment: task._comment || '' });
+      if (r) { this.fetchReview(); this.fetchJobs(); this.toast('Крок відхилено — повторно поставлено в чергу', 'warn'); }
     },
 
-    // ── Деталі агента ─────────────────────────────────────────────────────────
+    // ── Agent detail ─────────────────────────────────────────────────────────
     async openAgentDetail(agent) {
       this.agentDetail = { open: true, agent, tasks: [] };
       const tasks = await this.get(`/api/tasks?agent_id=${agent.id}&limit=20`);
       this.agentDetail.tasks = tasks;
     },
 
-    // ── Агенти ────────────────────────────────────────────────────────────────
+    // ── Agents ───────────────────────────────────────────────────────────────
     openAgentModal(agent = null) {
       this.agentModal.editing = agent;
       this.agentModal.form = agent
         ? { ...agent }
-        : { name: '', type: 'writer', model: 'meta-llama/llama-3.3-70b-instruct:free',
+        : { name: '', type: 'writer', model: 'qwen/qwen3.6-plus:free',
             system_prompt: '', max_parallel_tasks: 1 };
       this.agentModal.open = true;
     },
@@ -1027,14 +2069,14 @@ function app() {
       const result = this.agentModal.editing
         ? await this.put(`/api/agents/${this.agentModal.editing.id}`, f)
         : await this.post('/api/agents', f);
-      if (result) { this.agentModal.open = false; this.fetchAgents(); }
+      if (result) { this.agentModal.open = false; this.fetchAgents(); this.toast('Агента збережено'); }
     },
     async deleteAgent(id) {
       if (!confirm('Видалити агента?')) return;
-      await this.del(`/api/agents/${id}`); this.fetchAgents();
+      await this.del(`/api/agents/${id}`); this.fetchAgents(); this.toast('Агента видалено', 'warn');
     },
 
-    // ── Пайплайни ─────────────────────────────────────────────────────────────
+    // ── Pipelines ─────────────────────────────────────────────────────────────
     openPipelineModal(pipeline = null) {
       this.pipelineModal.editing = pipeline;
       if (pipeline) {
@@ -1043,7 +2085,7 @@ function app() {
           steps: pipeline.steps.map(s => ({ ...s, _depends_raw: (s.depends_on || []).join(', ') })),
         };
       } else {
-        this.pipelineModal.form = { name: '', platform: 'any', content_type: 'text', description: '', steps: [] };
+        this.pipelineModal.form = { name: '', platform: 'telegram', content_type: 'text', description: '', steps: [] };
       }
       this.pipelineModal.open = true;
     },
@@ -1066,14 +2108,14 @@ function app() {
       const result = this.pipelineModal.editing
         ? await this.put(`/api/pipelines/${this.pipelineModal.editing.id}`, payload)
         : await this.post('/api/pipelines', payload);
-      if (result) { this.pipelineModal.open = false; this.fetchPipelines(); }
+      if (result) { this.pipelineModal.open = false; this.fetchPipelines(); this.toast('Пайплайн збережено'); }
     },
     async deletePipeline(id) {
       if (!confirm('Видалити пайплайн?')) return;
-      await this.del(`/api/pipelines/${id}`); this.fetchPipelines();
+      await this.del(`/api/pipelines/${id}`); this.fetchPipelines(); this.toast('Пайплайн видалено', 'warn');
     },
 
-    // ── Платформи ─────────────────────────────────────────────────────────────
+    // ── Platforms ─────────────────────────────────────────────────────────────
     openPlatformModal(platform = null) {
       this.platformModal.editing = platform;
       if (platform) {
@@ -1081,9 +2123,9 @@ function app() {
         this.platformModal.form = {
           ...platform,
           tg_channel_id: creds.channel_id || '',
-          tg_bot_token:  '',   // не показуємо токен — тільки новий можна вписати
+          tg_bot_token: '',
           credentials_raw: JSON.stringify(
-            Object.fromEntries(platform.credentials_keys.map(k => [k, creds[k] || '***'])), null, 2),
+            Object.fromEntries((platform.credentials_keys || []).map(k => [k, creds[k] || '***'])), null, 2),
           settings_raw: JSON.stringify(platform.settings || {}, null, 2),
         };
       } else {
@@ -1095,34 +2137,29 @@ function app() {
       }
       this.platformModal.open = true;
     },
-
     async savePlatform() {
       const f = this.platformModal.form;
       let creds = {}, settings = {};
-
       if (f.type === 'telegram') {
-        // Зручний режим: окремі поля
         creds = { channel_id: f.tg_channel_id };
         if (f.tg_bot_token) creds.bot_token = f.tg_bot_token;
-        else if (this.platformModal.editing) creds.bot_token = '***'; // зберігаємо старий
+        else if (this.platformModal.editing) creds.bot_token = '***';
       } else {
         try { creds = JSON.parse(f.credentials_raw || '{}'); }
-        catch { alert('Невалідний JSON у полі "Облікові дані"'); return; }
+        catch { this.toast('Невалідний JSON у полі "Облікові дані"', 'error'); return; }
       }
-
       try { settings = JSON.parse(f.settings_raw || '{}'); }
-      catch { alert('Невалідний JSON у полі "Налаштування"'); return; }
-
+      catch { this.toast('Невалідний JSON у полі "Налаштування"', 'error'); return; }
       const payload = { name: f.name, type: f.type, credentials: creds,
                         settings, auto_publish: !!f.auto_publish };
       const result = this.platformModal.editing
         ? await this.put(`/api/platforms/${this.platformModal.editing.id}`, payload)
         : await this.post('/api/platforms', payload);
-      if (result) { this.platformModal.open = false; this.fetchPlatforms(); }
+      if (result) { this.platformModal.open = false; this.fetchPlatforms(); this.toast('Платформу збережено'); }
     },
     async deletePlatform(id) {
       if (!confirm('Видалити платформу?')) return;
-      await this.del(`/api/platforms/${id}`); this.fetchPlatforms();
+      await this.del(`/api/platforms/${id}`); this.fetchPlatforms(); this.toast('Платформу видалено', 'warn');
     },
   };
 }

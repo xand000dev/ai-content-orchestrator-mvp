@@ -140,6 +140,19 @@ async def websocket_endpoint(websocket: WebSocket):
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
+    # One-time migration: bump agents still at legacy default of 1 parallel task
+    from database import SessionLocal as _SL, Agent as _Agent
+    _db = _SL()
+    try:
+        updated = _db.query(_Agent).filter(_Agent.max_parallel_tasks == 1).update(
+            {"max_parallel_tasks": 3}, synchronize_session=False
+        )
+        _db.commit()
+        if updated:
+            logging.getLogger(__name__).info("⚙️  Upgraded %d agent(s) to max_parallel_tasks=3", updated)
+    finally:
+        _db.close()
+
     asyncio.create_task(orchestrator_loop())
     # Telegram Bot Control — polling для approve/reject прямо з телефону
     admin_chat = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "")

@@ -43,7 +43,7 @@ class Agent(Base):
     system_prompt = Column(Text, default="")
     # JSON list of platform slugs this agent supports, e.g. ["youtube","telegram"]
     capabilities = Column(Text, default="[]")
-    max_parallel_tasks = Column(Integer, default=1)
+    max_parallel_tasks = Column(Integer, default=3)
     # idle | busy | error | offline
     status = Column(String, default="idle")
     created_at = Column(DateTime, default=datetime.utcnow)

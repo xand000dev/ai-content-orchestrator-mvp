@@ -21,6 +21,8 @@ import os
 from datetime import datetime
 from typing import Set
 
+from sqlalchemy import func
+
 from database import SessionLocal, Agent, Job, Platform, Task, safe_json
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,36 @@ manager = ConnectionManager()
 
 # Set of task IDs currently being executed (prevent double-dispatch)
 _running: Set[str] = set()
+
+
+def _get_busy_counts(db) -> dict:
+    """Return {agent_id: running_task_count} for agents with active tasks."""
+    rows = (
+        db.query(Task.agent_id, func.count().label("cnt"))
+        .filter(Task.agent_id.isnot(None), Task.status.in_(["queued", "running"]))
+        .group_by(Task.agent_id)
+        .all()
+    )
+    return {r.agent_id: r.cnt for r in rows}
+
+
+def _find_available_agent(db, agent_type: str, busy_counts: dict):
+    """Find an agent of given type with remaining capacity (count < max_parallel_tasks)."""
+    agents = db.query(Agent).filter(Agent.type == agent_type).all()
+    # Prefer least-loaded agent first
+    agents.sort(key=lambda a: busy_counts.get(a.id, 0))
+    for agent in agents:
+        if busy_counts.get(agent.id, 0) < agent.max_parallel_tasks:
+            return agent
+    return None
+
+
+def _sync_agent_status(db, agent_id: str, busy_counts: dict):
+    """Update agent.status to reflect actual task load."""
+    agent = db.query(Agent).filter(Agent.id == agent_id).first()
+    if agent:
+        count = busy_counts.get(agent_id, 0)
+        agent.status = "busy" if count > 0 else "idle"
 
 
 # ─────────────────────────── Helper functions ────────────────────────────────
@@ -268,7 +300,12 @@ async def _run_task(task_id: str):
         task.output_data   = json.dumps({"result": result_text, "step": task.step_name})
         task.completed_at  = datetime.utcnow()
         task.status        = "waiting_review" if task.review_required else "done"
-        agent.status       = "idle"
+        # Set agent status based on remaining active tasks (not blindly "idle")
+        remaining = db.query(Task).filter(
+            Task.agent_id == agent.id,
+            Task.status.in_(["queued", "running"]),
+        ).count()
+        agent.status = "busy" if remaining > 0 else "idle"
         db.commit()
 
         logger.info("✓ Task %s → %s", task.step_name, task.status)
@@ -314,7 +351,11 @@ async def _run_task(task_id: str):
             if task.agent_id:
                 ag = db.query(Agent).filter(Agent.id == task.agent_id).first()
                 if ag:
-                    ag.status = "idle"
+                    remaining = db.query(Task).filter(
+                        Task.agent_id == ag.id,
+                        Task.status.in_(["queued", "running"]),
+                    ).count()
+                    ag.status = "busy" if remaining > 0 else "idle"
             db.commit()
         await manager.broadcast({
             "type": "task_update",
@@ -334,6 +375,11 @@ async def _tick():
     db = SessionLocal()
     try:
         running_jobs = db.query(Job).filter(Job.status == "running").all()
+        if not running_jobs:
+            return
+
+        # Pre-compute running task count per agent once per tick
+        busy_counts = _get_busy_counts(db)
 
         for job in running_jobs:
             ready = _get_ready_tasks(db, job.id)
@@ -342,19 +388,20 @@ async def _tick():
                 for task in ready:
                     if task.id in _running:
                         continue
-                    agent = (
-                        db.query(Agent)
-                        .filter(Agent.type == task.agent_type, Agent.status == "idle")
-                        .first()
-                    )
+                    agent = _find_available_agent(db, task.agent_type, busy_counts)
                     if not agent:
                         continue
+                    # Update in-tick counter so next task in same loop sees correct load
+                    busy_counts[agent.id] = busy_counts.get(agent.id, 0) + 1
+
                     task.input_data = json.dumps(_collect_input(db, task))
                     task.agent_id   = agent.id
                     task.status     = "queued"
                     agent.status    = "busy"
                     db.commit()
-                    logger.info("→ Dispatch task=%s agent=%s", task.step_name, agent.name)
+                    logger.info("→ Dispatch task=%s agent=%s (load %d/%d)",
+                                task.step_name, agent.name,
+                                busy_counts[agent.id], agent.max_parallel_tasks)
                     _running.add(task.id)
                     asyncio.create_task(_run_task(task.id))
             else:

@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime
 from sqlalchemy import create_engine, Column, String, Integer, Boolean, DateTime, Text, ForeignKey
@@ -19,6 +20,16 @@ def get_db():
 
 def new_id():
     return str(uuid.uuid4())
+
+
+def safe_json(text: str, default=None):
+    """Safely parse JSON string. Returns `default` on empty/invalid input."""
+    if default is None:
+        default = {}
+    try:
+        return json.loads(text) if text else default
+    except (json.JSONDecodeError, TypeError):
+        return default
 
 
 class Agent(Base):

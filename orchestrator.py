@@ -21,7 +21,7 @@ import os
 from datetime import datetime
 from typing import Set
 
-from database import SessionLocal, Agent, Job, Platform, Task
+from database import SessionLocal, Agent, Job, Platform, Task, safe_json
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +63,9 @@ _running: Set[str] = set()
 def _collect_input(db, task: Task) -> dict:
     """Merge initial_input + outputs of all dependency steps."""
     job = db.query(Job).filter(Job.id == task.job_id).first()
-    result: dict = json.loads(job.initial_input or "{}")
+    result: dict = safe_json(job.initial_input, {})
 
-    dep_names: list = json.loads(task.depends_on or "[]")
+    dep_names: list = safe_json(task.depends_on, [])
     if not dep_names:
         return result
 
@@ -76,7 +76,7 @@ def _collect_input(db, task: Task) -> dict:
     )
     for dt in dep_tasks:
         if dt.output_data:
-            result[dt.step_name] = json.loads(dt.output_data)
+            result[dt.step_name] = safe_json(dt.output_data, {})
     return result
 
 
@@ -114,7 +114,7 @@ def _get_ready_tasks(db, job_id: str) -> list:
 
     return [
         t for t in pending
-        if all(dep in done_steps for dep in json.loads(t.depends_on or "[]"))
+        if all(dep in done_steps for dep in safe_json(t.depends_on, []))
     ]
 
 
@@ -157,7 +157,7 @@ async def _try_telegram_autopost(job_id: str):
         if not job:
             return
 
-        initial_input = json.loads(job.initial_input or "{}")
+        initial_input = safe_json(job.initial_input, {})
         platform_id   = initial_input.get("platform_id")
         if not platform_id:
             return
@@ -166,7 +166,7 @@ async def _try_telegram_autopost(job_id: str):
         if not platform or platform.type != "telegram" or not platform.auto_publish:
             return
 
-        creds      = json.loads(platform.credentials or "{}")
+        creds      = safe_json(platform.credentials, {})
         bot_token  = creds.get("bot_token") or os.getenv("TELEGRAM_BOT_TOKEN", "")
         channel_id = creds.get("channel_id")
         if not channel_id:
@@ -203,13 +203,11 @@ def _pick_final_content(db, job_id: str) -> str | None:
     for preferred_type in ("publisher", "writer", "editor", "researcher"):
         for t in reversed(tasks):
             if t.agent_type == preferred_type and t.output_data:
-                data = json.loads(t.output_data)
-                return data.get("result", "")
+                return safe_json(t.output_data, {}).get("result", "")
     # Fallback: any task with output
     for t in reversed(tasks):
         if t.output_data:
-            data = json.loads(t.output_data)
-            return data.get("result", "")
+            return safe_json(t.output_data, {}).get("result", "")
     return None
 
 
@@ -255,7 +253,7 @@ async def _run_task(task_id: str):
             "status": "running",
         })
 
-        user_msg      = _build_user_message(task.step_name, json.loads(task.input_data or "{}"))
+        user_msg      = _build_user_message(task.step_name, safe_json(task.input_data, {}))
         system_prompt = agent.system_prompt or f"You are an expert {agent.type} AI agent."
 
         logger.info("⚡ Task %s | agent=%s | model=%s", task.step_name, agent.name, agent.model)

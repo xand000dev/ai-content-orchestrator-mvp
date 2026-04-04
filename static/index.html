@@ -1732,14 +1732,15 @@ function app() {
     },
     async saveSchedule() {
       const f = this.scheduleForm;
-      const result = this.scheduleModal.editing
+      const wasEditing = !!this.scheduleModal.editing;
+      const result = wasEditing
         ? await this.put(`/api/schedules/${this.scheduleModal.editing.id}`, f)
         : await this.post('/api/schedules', f);
       if (result) {
         this.showScheduleForm = false;
         this.scheduleModal.editing = null;
         this.fetchSchedules();
-        this.toast(this.scheduleModal.editing ? 'Розклад оновлено' : 'Розклад створено ⏰');
+        this.toast(wasEditing ? 'Розклад оновлено' : 'Розклад створено ⏰');
       }
     },
     async toggleSchedule(sched) {
@@ -1818,17 +1819,20 @@ function app() {
     },
     async generateTopics(stratId, count) {
       this.generatingTopics = stratId;
-      const r = await this.post(`/api/strategies/${stratId}/generate-topics?count=${count}`, {});
-      this.generatingTopics = null;
-      if (r) {
-        if (r.auto_approve) {
-          this.toast(`⚡ Згенеровано і запущено ${r.launched} тем!`);
-          this.fetchJobs();
-        } else {
-          this.toast(`💡 Згенеровано ${r.generated} тем — схвали потрібні`);
+      try {
+        const r = await this.post(`/api/strategies/${stratId}/generate-topics?count=${count}`, {});
+        if (r) {
+          if (r.auto_approve) {
+            this.toast(`⚡ Згенеровано і запущено ${r.launched} тем!`);
+            this.fetchJobs();
+          } else {
+            this.toast(`💡 Згенеровано ${r.generated} тем — схвали потрібні`);
+          }
+          await this.selectStrategy(stratId);
+          await this.fetchStrategies();
         }
-        await this.selectStrategy(stratId);
-        await this.fetchStrategies();
+      } finally {
+        this.generatingTopics = null;
       }
     },
     async approveTopic(id) {
@@ -1968,6 +1972,12 @@ function app() {
         if (msg.type === 'job_update' && msg.status === 'done') {
           this.toast('Задача завершена!');
         }
+        if (msg.type === 'task_update' && msg.status === 'error') {
+          this.toast(`❌ Помилка кроку «${msg.step_name || 'крок'}»`, 'error');
+        }
+        if (msg.type === 'job_update' && msg.status === 'error') {
+          this.toast('❌ Задача завершилась з помилкою', 'error');
+        }
         if (msg.type === 'auto_manager_decision') {
           this.autobotLog.push({
             manager_name: msg.manager_name,
@@ -1999,12 +2009,14 @@ function app() {
       });
       if (!created) return;
       const started = await this.post(`/api/jobs/${created.id}/start`, {});
+      this.fetchJobs();
       if (started) {
         this.jobForm = { pipeline_id: '', topic: '', keywords: '', platform_id: '', extra: '' };
         this.showNewJobForm = false;
-        this.fetchJobs();
         this.currentTab = 'dashboard';
         this.toast('Задача запущена!');
+      } else {
+        this.toast('Задача створена, але не запустилась — натисни Start вручну', 'warn');
       }
     },
     async startJob(id) {
@@ -2042,13 +2054,16 @@ function app() {
         return;
       }
 
-      job._sending = true;
-      const result = await this.post(`/api/jobs/${job.id}/send-telegram`, {});
-      job._sending = false;
-      if (result?.ok) {
-        this.toast(`Пост відправлено у ${result.channel || channelId}`);
+      this.jobs = this.jobs.map(j => j.id === job.id ? {...j, _sending: true} : j);
+      try {
+        const result = await this.post(`/api/jobs/${job.id}/send-telegram`, {});
+        if (result?.ok) {
+          this.toast(`Пост відправлено у ${result.channel || channelId}`);
+        }
+        this.fetchJobs();
+      } finally {
+        this.jobs = this.jobs.map(j => j.id === job.id ? {...j, _sending: false} : j);
       }
-      this.fetchJobs();
     },
 
     // ── Review ────────────────────────────────────────────────────────────────

@@ -205,6 +205,7 @@ async def start_bot_polling(admin_chat_id: str):
     """
     logger.info("🤖 Telegram Bot Control активовано (admin_chat=%s)", admin_chat_id)
     offset = 0
+    retry_count = 0
 
     while True:
         try:
@@ -223,6 +224,7 @@ async def start_bot_polling(admin_chat_id: str):
                 await asyncio.sleep(5)
                 continue
 
+            retry_count = 0  # Reset backoff on successful response
             for update in data.get("result", []):
                 offset = update["update_id"] + 1
                 cq = update.get("callback_query")
@@ -241,4 +243,6 @@ async def start_bot_polling(admin_chat_id: str):
             break
         except Exception as e:
             logger.exception("Telegram polling error: %s", e)
-            await asyncio.sleep(5)
+            sleep_time = min(2 ** retry_count, 60)
+            retry_count = min(retry_count + 1, 6)
+            await asyncio.sleep(sleep_time)

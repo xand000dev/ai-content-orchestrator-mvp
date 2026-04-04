@@ -28,8 +28,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from sqlalchemy import func
+
 from database import (
-    get_db, new_id,
+    get_db, new_id, safe_json,
     Strategy, TopicSuggestion, Pipeline, Platform, Job, Task,
 )
 
@@ -70,18 +72,26 @@ class StrategyUpdate(BaseModel):
 def _serialize_strategy(s: Strategy, db: Session) -> dict:
     pipeline = db.query(Pipeline).filter(Pipeline.id == s.pipeline_id).first() if s.pipeline_id else None
     platform = db.query(Platform).filter(Platform.id == s.platform_id).first() if s.platform_id else None
+    # Single query instead of 4 separate COUNTs
+    rows = (
+        db.query(TopicSuggestion.status, func.count().label("cnt"))
+        .filter(TopicSuggestion.strategy_id == s.id)
+        .group_by(TopicSuggestion.status)
+        .all()
+    )
+    by_status = {r.status: r.cnt for r in rows}
     topic_counts = {
-        "total":    db.query(TopicSuggestion).filter(TopicSuggestion.strategy_id == s.id).count(),
-        "pending":  db.query(TopicSuggestion).filter(TopicSuggestion.strategy_id == s.id, TopicSuggestion.status == "pending").count(),
-        "approved": db.query(TopicSuggestion).filter(TopicSuggestion.strategy_id == s.id, TopicSuggestion.status == "approved").count(),
-        "launched": db.query(TopicSuggestion).filter(TopicSuggestion.strategy_id == s.id, TopicSuggestion.status == "launched").count(),
+        "total":    sum(by_status.values()),
+        "pending":  by_status.get("pending", 0),
+        "approved": by_status.get("approved", 0),
+        "launched": by_status.get("launched", 0),
     }
     return {
         "id":                s.id,
         "name":              s.name,
         "niche":             s.niche,
         "audience":          s.audience,
-        "content_pillars":   json.loads(s.content_pillars or "[]"),
+        "content_pillars":   safe_json(s.content_pillars, []),
         "tone":              s.tone,
         "pipeline_id":       s.pipeline_id,
         "pipeline_name":     pipeline.name if pipeline else None,

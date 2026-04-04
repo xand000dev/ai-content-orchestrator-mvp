@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 
 from database import (
     SessionLocal, AutoManager, Strategy, TopicSuggestion,
-    Pipeline, Platform, Job, Task, Agent, new_id,
+    Pipeline, Platform, Job, Task, Agent, new_id, safe_json,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def _observe(db, am: AutoManager) -> dict:
         .limit(5).all()
     )
 
-    managed_ids = json.loads(am.strategy_ids or "[]")
+    managed_ids = safe_json(am.strategy_ids, [])
     if managed_ids:
         strategies = db.query(Strategy).filter(Strategy.id.in_(managed_ids)).all()
     else:
@@ -67,11 +67,11 @@ def _observe(db, am: AutoManager) -> dict:
         "weekday": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][now.weekday()],
         "agents": {"idle": idle_count, "total": len(all_agents)},
         "running_jobs": [
-            {"id": j.id[:8], "topic": json.loads(j.initial_input or "{}").get("topic", "?")[:60]}
+            {"id": j.id[:8], "topic": safe_json(j.initial_input, {}).get("topic", "?")[:60]}
             for j in running_jobs
         ],
         "recent_done_24h": [
-            {"topic": json.loads(j.initial_input or "{}").get("topic", "?")[:60]}
+            {"topic": safe_json(j.initial_input, {}).get("topic", "?")[:60]}
             for j in recent_done
         ],
         "strategies": [

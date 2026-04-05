@@ -59,6 +59,32 @@ manager = ConnectionManager()
 # Set of task IDs currently being executed (prevent double-dispatch)
 _running: Set[str] = set()
 
+# ─────────────────────────── Console log broadcast ───────────────────────────
+
+_log_buffer: list = []  # Ring buffer for recent logs (max 200)
+_LOG_BUFFER_MAX = 200
+
+
+async def _broadcast_log(level: str, source: str, message: str, details: dict | None = None):
+    """Broadcast a structured log entry to all connected WebSocket clients."""
+    entry = {
+        "type": "console_log",
+        "level": level,       # info | warn | error | success
+        "source": source,     # orchestrator | agent | openrouter | autobot | telegram
+        "message": message,
+        "details": details or {},
+        "ts": datetime.utcnow().strftime("%H:%M:%S"),
+    }
+    _log_buffer.append(entry)
+    if len(_log_buffer) > _LOG_BUFFER_MAX:
+        _log_buffer.pop(0)
+    await manager.broadcast(entry)
+
+
+def get_log_buffer() -> list:
+    """Return current log buffer (called by API endpoint)."""
+    return list(_log_buffer)
+
 
 def _get_busy_counts(db) -> dict:
     """Return {agent_id: running_task_count} for agents with active tasks."""
@@ -166,6 +192,13 @@ def _check_job_completion(db, job_id: str) -> bool:
             job.completed_at = datetime.utcnow()
             db.commit()
             logger.info("Job %s → %s", job_id[:8], job.status)
+            topic = safe_json(job.initial_input, {}).get("topic", "?")[:50]
+            asyncio.create_task(_broadcast_log(
+                "success" if job.status == "done" else "error",
+                "orchestrator",
+                f"Job завершено → {job.status}: {topic}",
+                {"job_id": job_id[:8]},
+            ))
             just_done = job.status == "done"
             if just_done:
                 from obsidian_writer import get_writer
@@ -289,12 +322,29 @@ async def _run_task(task_id: str):
         system_prompt = agent.system_prompt or f"You are an expert {agent.type} AI agent."
 
         logger.info("⚡ Task %s | agent=%s | model=%s", task.step_name, agent.name, agent.model)
+        await _broadcast_log(
+            "info", "agent",
+            f"⚡ {agent.name} розпочав «{task.step_name}»",
+            {"model": agent.model, "task_id": task_id[:8], "job_id": job_id[:8]},
+        )
+
+        await _broadcast_log(
+            "info", "openrouter",
+            f"→ API запит: {agent.model.split('/')[-1]}",
+            {"model": agent.model, "step": task.step_name, "prompt_len": len(user_msg)},
+        )
 
         result_text = await call_openrouter(
             model=agent.model,
             system_prompt=system_prompt,
             user_message=user_msg,
             api_key=os.getenv("OPENROUTER_API_KEY"),
+        )
+
+        await _broadcast_log(
+            "success", "openrouter",
+            f"← Відповідь: {agent.model.split('/')[-1]} ({len(result_text)} символів)",
+            {"model": agent.model, "step": task.step_name, "response_len": len(result_text)},
         )
 
         task.output_data   = json.dumps({"result": result_text, "step": task.step_name})
@@ -309,6 +359,11 @@ async def _run_task(task_id: str):
         db.commit()
 
         logger.info("✓ Task %s → %s", task.step_name, task.status)
+        await _broadcast_log(
+            "success", "agent",
+            f"✓ {agent.name} завершив «{task.step_name}» → {task.status}",
+            {"task_id": task_id[:8], "job_id": job_id[:8], "status": task.status},
+        )
 
         await manager.broadcast({
             "type": "task_update",
@@ -337,6 +392,11 @@ async def _run_task(task_id: str):
 
     except OpenRouterError as exc:
         err_msg = f"[{exc.model or 'unknown'}] {exc}"
+        await _broadcast_log(
+            "error", "openrouter",
+            f"❌ OpenRouter помилка: {err_msg[:120]}",
+            {"task_id": task_id[:8], "model": exc.model or "?"},
+        )
         logger.error("❌ Task %s OpenRouter error: %s", task_id, err_msg)
         try:
             db.rollback()
@@ -368,6 +428,11 @@ async def _run_task(task_id: str):
 
     except Exception as exc:
         logger.exception("❌ Task %s failed: %s", task_id, exc)
+        await _broadcast_log(
+            "error", "agent",
+            f"❌ Задача впала: {str(exc)[:120]}",
+            {"task_id": task_id[:8]},
+        )
         try:
             db.rollback()
         except Exception:
@@ -430,6 +495,11 @@ async def _tick():
                     task.status     = "queued"
                     agent.status    = "busy"
                     db.commit()
+                    asyncio.create_task(_broadcast_log(
+                        "info", "orchestrator",
+                        f"→ Dispatch «{task.step_name}» → {agent.name} ({busy_counts[agent.id]}/{agent.max_parallel_tasks})",
+                        {"agent": agent.name, "step": task.step_name},
+                    ))
                     logger.info("→ Dispatch task=%s agent=%s (load %d/%d)",
                                 task.step_name, agent.name,
                                 busy_counts[agent.id], agent.max_parallel_tasks)

@@ -359,7 +359,7 @@ async def run_auto_manager(am_id: str, force: bool = False):
     force=True skips the active check (used for manual "Run now" triggers).
     """
     from openrouter import call_openrouter
-    from orchestrator import manager as ws_manager  # local import to avoid circular
+    from orchestrator import manager as ws_manager, _broadcast_log  # local import to avoid circular
 
     db = SessionLocal()
     try:
@@ -385,6 +385,7 @@ async def run_auto_manager(am_id: str, force: bool = False):
             )
         except Exception as e:
             logger.error("AutoManager '%s' OpenRouter error: %s", am.name, e)
+            await _broadcast_log("error", "autobot", f"🤖 {am.name}: OpenRouter помилка — {str(e)[:100]}")
             am.last_run = datetime.utcnow()
             am.last_thinking = f"OpenRouter error: {e}"
             am.last_actions = json.dumps([{"type": "noop", "error": str(e)}])
@@ -398,6 +399,7 @@ async def run_auto_manager(am_id: str, force: bool = False):
             actions = []
 
         logger.info("🤖 AutoManager '%s' thinking: %s", am.name, thinking)
+        await _broadcast_log("info", "autobot", f"🤖 {am.name}: {thinking[:150]}", {"actions_count": len(actions)})
 
         # 3. Act
         action_log = await _execute_actions(db, am, actions, state)
@@ -418,6 +420,18 @@ async def run_auto_manager(am_id: str, force: bool = False):
         })
 
         logger.info("🤖 AutoManager '%s' cycle done: %d actions", am.name, len(action_log))
+        for al in action_log:
+            atype = al.get('type', 'noop')
+            if al.get('error'):
+                await _broadcast_log("error", "autobot", f"🤖 {am.name} [{atype}]: {al['error']}")
+            elif atype == 'launch_topic':
+                await _broadcast_log("success", "autobot", f"🤖 {am.name}: запустив тему '{al.get('topic', '?')[:60]}'")
+            elif atype == 'approve_topic':
+                await _broadcast_log("success", "autobot", f"🤖 {am.name}: схвалив тему '{al.get('topic', '?')[:60]}'")
+            elif atype == 'generate_topics':
+                await _broadcast_log("info", "autobot", f"🤖 {am.name}: згенеровано {al.get('generated', 0)} тем")
+            elif atype != 'noop':
+                await _broadcast_log("info", "autobot", f"🤖 {am.name}: {atype}")
 
     except Exception as e:
         logger.exception("AutoManager '%s' cycle error: %s", am_id, e)

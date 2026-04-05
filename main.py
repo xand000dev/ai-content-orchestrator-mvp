@@ -125,6 +125,13 @@ async def health():
     }
 
 
+@app.get("/api/logs/recent")
+async def logs_recent():
+    """Повернути останні записи логу консолі."""
+    from orchestrator import get_log_buffer
+    return get_log_buffer()
+
+
 # ── WebSocket ─────────────────────────────────────────────────────────────────
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

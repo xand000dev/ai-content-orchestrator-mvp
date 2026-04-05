@@ -264,7 +264,7 @@ async def send_job_to_telegram(job_id: str, channel_id: str, bot_token: str | No
 
 async def _run_task(task_id: str):
     """Execute one agent task end-to-end."""
-    from openrouter import call_openrouter
+    from openrouter import call_openrouter, OpenRouterError
 
     db = SessionLocal()
     job_id = None
@@ -334,6 +334,37 @@ async def _run_task(task_id: str):
             if just_done:
                 asyncio.create_task(_try_telegram_autopost(job_id))
                 await manager.broadcast({"type": "job_update", "job_id": job_id, "status": "done"})
+
+    except OpenRouterError as exc:
+        err_msg = f"[{exc.model or 'unknown'}] {exc}"
+        logger.error("❌ Task %s OpenRouter error: %s", task_id, err_msg)
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        db.close()
+        db = SessionLocal()
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task:
+            task.status        = "error"
+            task.error_message = err_msg
+            task.completed_at  = datetime.utcnow()
+            if task.agent_id:
+                ag = db.query(Agent).filter(Agent.id == task.agent_id).first()
+                if ag:
+                    remaining = db.query(Task).filter(
+                        Task.agent_id == ag.id,
+                        Task.status.in_(["queued", "running"]),
+                    ).count()
+                    ag.status = "busy" if remaining > 0 else "idle"
+            db.commit()
+        await manager.broadcast({
+            "type": "task_update",
+            "task_id": task_id,
+            "job_id": job_id,
+            "status": "error",
+            "error": err_msg,
+        })
 
     except Exception as exc:
         logger.exception("❌ Task %s failed: %s", task_id, exc)

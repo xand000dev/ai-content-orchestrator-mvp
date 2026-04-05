@@ -1,7 +1,33 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Environment
 .env
+
+# Database
 *.db
 *.sqlite3
+
+# OS
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# Obsidian vault (generated content, not source code)
+ai-content/
+
+# Claude Code
+.claude/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -135,3 +135,67 @@ async def reject_task(task_id: str, body: ReviewAction, db: Session = Depends(ge
         "status": "pending",
     })
     return _serialize(t, db)
+
+
+@router.post("/{task_id}/retry")
+async def retry_task(task_id: str, db: Session = Depends(get_db)):
+    """Reset an errored task back to pending so it gets re-dispatched."""
+    t = db.query(Task).filter(Task.id == task_id).first()
+    if not t:
+        raise HTTPException(404, "Task not found")
+    if t.status != "error":
+        raise HTTPException(400, f"Task is '{t.status}', not 'error'")
+
+    job_id = t.job_id
+    t.status = "pending"
+    t.output_data = None
+    t.error_message = None
+    t.started_at = None
+    t.completed_at = None
+    if t.agent_id:
+        ag = db.query(Agent).filter(Agent.id == t.agent_id).first()
+        if ag:
+            ag.status = "idle"
+    db.commit()
+
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if job and job.status in ("error", "stopped"):
+        job.status = "running"
+        job.completed_at = None
+        db.commit()
+
+    await manager.broadcast({"type": "task_update", "task_id": task_id, "job_id": job_id, "status": "pending"})
+    await manager.broadcast({"type": "job_update", "job_id": job_id, "status": "running"})
+    return _serialize(t, db)
+
+
+@router.post("/bulk-approve")
+async def bulk_approve(db: Session = Depends(get_db)):
+    """Approve all tasks currently waiting for review."""
+    tasks = db.query(Task).filter(Task.status == "waiting_review").all()
+    if not tasks:
+        return {"approved": 0}
+
+    approved_jobs = set()
+    for t in tasks:
+        t.status = "approved"
+        approved_jobs.add(t.job_id)
+    db.commit()
+
+    just_done_jobs = []
+    for job_id in approved_jobs:
+        if _check_job_completion(db, job_id):
+            just_done_jobs.append(job_id)
+            asyncio.create_task(_try_telegram_autopost(job_id))
+            await manager.broadcast({"type": "job_update", "job_id": job_id, "status": "done"})
+        else:
+            job = db.query(Job).filter(Job.id == job_id).first()
+            if job and job.status not in ("done", "error", "stopped"):
+                job.status = "running"
+                db.commit()
+            await manager.broadcast({"type": "job_update", "job_id": job_id, "status": "running"})
+
+    for t in tasks:
+        await manager.broadcast({"type": "task_update", "task_id": t.id, "job_id": t.job_id, "status": "approved"})
+
+    return {"approved": len(tasks), "jobs_completed": just_done_jobs}

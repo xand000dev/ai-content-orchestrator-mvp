@@ -130,6 +130,50 @@ check("3min ago after retry (interval=30) → not due yet",
       not is_overdue(datetime.utcnow() - timedelta(minutes=27), 30))
 
 
+# ── 7. enable_thinking=False sets payload flag for Qwen3 ─────────────────────
+print("\n[7] enable_thinking=False disables reasoning for Qwen3")
+from openrouter import _THINKING_MODELS
+
+check("qwen3.6-plus in thinking models", "qwen/qwen3.6-plus:free" in _THINKING_MODELS)
+check("llama NOT in thinking models",    "meta-llama/llama-3.3-70b-instruct:free" not in _THINKING_MODELS)
+
+# Verify payload construction with enable_thinking=False
+captured_payload = {}
+
+async def mock_post_capture(*args, **kw):
+    if "json" in kw:
+        captured_payload.update(kw["json"])
+    raise httpx.TimeoutException("stop here")  # don't actually send
+
+async def test_thinking_flag():
+    with patch("httpx.AsyncClient.post", new=mock_post_capture):
+        try:
+            await call_openrouter(
+                model="qwen/qwen3.6-plus:free",
+                system_prompt="s", user_message="u",
+                api_key="key", enable_thinking=False,
+            )
+        except Exception:
+            pass
+    check("enable_thinking=False added to payload for Qwen3",
+          captured_payload.get("enable_thinking") is False)
+
+    # Non-thinking model should NOT get the flag
+    captured_payload.clear()
+    with patch("httpx.AsyncClient.post", new=mock_post_capture):
+        try:
+            await call_openrouter(
+                model="meta-llama/llama-3.3-70b-instruct:free",
+                system_prompt="s", user_message="u",
+                api_key="key", enable_thinking=False,
+            )
+        except Exception:
+            pass
+    check("enable_thinking NOT added for non-Qwen3 model",
+          "enable_thinking" not in captured_payload)
+
+asyncio.run(test_thinking_flag())
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 print()
 if failures:

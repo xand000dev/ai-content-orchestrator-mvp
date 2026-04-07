@@ -323,12 +323,30 @@
       border:4px solid transparent; border-top-color:#1e2a3a;
     }
     /* Sprite state animations */
-    @keyframes sp-bob   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+    /* Idle: wander around the desk in a small loop, slight sway = walking feel */
+    @keyframes sp-walk {
+      0%   { transform: translate(0px,    0px) rotate(0deg) }
+      12%  { transform: translate(5px,  -3px) rotate(-4deg) }
+      25%  { transform: translate(6px,   2px) rotate(2deg) }
+      37%  { transform: translate(2px,   5px) rotate(3deg) }
+      50%  { transform: translate(-4px,  4px) rotate(-2deg) }
+      62%  { transform: translate(-6px, -1px) rotate(-4deg) }
+      75%  { transform: translate(-3px, -5px) rotate(1deg) }
+      87%  { transform: translate(2px,  -4px) rotate(3deg) }
+      100% { transform: translate(0px,   0px) rotate(0deg) }
+    }
+    /* Step bob: legs moving while walking (applied to whole sprite) */
+    @keyframes sp-step {
+      0%,100% { transform: scaleY(1) }
+      50%     { transform: scaleY(1.04) }
+    }
     @keyframes sp-type  { 0%,100%{transform:translateX(0) rotate(0)} 30%{transform:translateX(1.5px) rotate(-2deg)} 70%{transform:translateX(-1.5px) rotate(2deg)} }
     @keyframes sp-think { 0%,100%{opacity:1} 50%{opacity:.4} }
     @keyframes sp-pop   { 0%{transform:scale(1)} 35%{transform:scale(1.45)} 65%{transform:scale(.9)} 100%{transform:scale(1)} }
     @keyframes sp-shake { 0%,100%{transform:rotate(0)} 15%{transform:rotate(-9deg)} 35%{transform:rotate(9deg)} 55%{transform:rotate(-5deg)} 75%{transform:rotate(5deg)} }
-    .sprite-idle     .sprite-body-wrap { animation: sp-bob   2s   ease-in-out infinite; }
+
+    .sprite-idle     .sprite-body-wrap { animation: sp-walk 5s ease-in-out infinite; }
+    .sprite-idle                       { animation: sp-step .45s ease-in-out infinite; }
     .sprite-working  .sprite-body-wrap { animation: sp-type  .18s ease-in-out infinite; }
     .sprite-thinking .sprite-body-wrap { animation: sp-think 1.1s ease-in-out infinite; }
     .sprite-done     .sprite-body-wrap { animation: sp-pop   .55s ease forwards; }
@@ -3213,7 +3231,7 @@ function app() {
     },
     agentBubbleText(agent) {
       const task = this.agentCurrentTask(agent);
-      if (!task) return null;
+      if (!task) return agent.status === 'idle' ? '🚶 ...' : null;
       if (task.status === 'running') return '⌨️ ' + (task.step_name || '').slice(0, 14);
       if (task.status === 'queued') return '💭 ...';
       if (task.status === 'waiting_review') return '👀 Review';

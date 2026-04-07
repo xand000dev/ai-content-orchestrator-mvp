@@ -210,11 +210,12 @@ async def call_openrouter(
                 model=model, status_code=e.response.status_code,
             )
         except httpx.TimeoutException:
-            last_error = OpenRouterError(
+            # Don't retry timeouts in the inner loop — caller handles retry scheduling.
+            # With thinking models (300s), inner retries would block for 20+ minutes.
+            raise OpenRouterError(
                 f"Timeout ({int(timeout)}s) при запиті до {model}",
                 model=model,
             )
-            continue
         except httpx.ConnectError as e:
             last_error = OpenRouterError(
                 f"Connection error до OpenRouter: {e}",

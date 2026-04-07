@@ -395,11 +395,23 @@ async def run_auto_manager(am_id: str, force: bool = False):
                 max_tokens=1500,  # AutoManager needs only a short JSON decision
             )
         except Exception as e:
-            logger.error("AutoManager '%s' OpenRouter error: %s", am.name, e)
-            await _broadcast_log("error", "autobot", f"🤖 {am.name}: OpenRouter помилка — {str(e)[:100]}")
-            am.last_run = datetime.utcnow()
-            am.last_thinking = f"OpenRouter error: {e}"
-            am.last_actions = json.dumps([{"type": "noop", "error": str(e)}])
+            err_str = str(e)
+            logger.error("AutoManager '%s' OpenRouter error: %s", am.name, err_str)
+            await _broadcast_log("error", "autobot", f"🤖 {am.name}: {err_str[:120]}")
+
+            is_soft = any(kw in err_str.lower() for kw in ("timeout", "connection", "connect"))
+            if is_soft:
+                # Retry in 3 min: set last_run far back enough
+                retry_in = 3  # minutes
+                am.last_run = datetime.utcnow() - timedelta(minutes=am.check_interval_minutes) + timedelta(minutes=retry_in)
+                await _broadcast_log("warn", "autobot",
+                    f"🔄 {am.name}: м'яка помилка — повтор через {retry_in} хв")
+            else:
+                # Hard error (auth, bad request): wait full interval
+                am.last_run = datetime.utcnow()
+
+            am.last_thinking = f"Error: {err_str}"
+            am.last_actions = json.dumps([{"type": "noop", "error": err_str}])
             db.commit()
             return
 

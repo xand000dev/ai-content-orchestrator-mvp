@@ -147,16 +147,33 @@ async def websocket_endpoint(websocket: WebSocket):
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    # One-time migration: bump agents still at legacy default of 1 parallel task
-    from database import SessionLocal as _SL, Agent as _Agent
+    from database import SessionLocal as _SL, Agent as _Agent, Task as _Task
     _db = _SL()
+    _log = logging.getLogger(__name__)
     try:
+        # Migration: bump agents still at legacy default of 1 parallel task
         updated = _db.query(_Agent).filter(_Agent.max_parallel_tasks == 1).update(
             {"max_parallel_tasks": 3}, synchronize_session=False
         )
         _db.commit()
         if updated:
-            logging.getLogger(__name__).info("⚙️  Upgraded %d agent(s) to max_parallel_tasks=3", updated)
+            _log.info("⚙️  Upgraded %d agent(s) to max_parallel_tasks=3", updated)
+
+        # Reset tasks stuck in running/queued from a previous server session.
+        # These can never complete — the coroutine is gone after restart.
+        stuck = (
+            _db.query(_Task)
+            .filter(_Task.status.in_(["running", "queued"]))
+            .all()
+        )
+        for t in stuck:
+            t.status = "pending"
+            t.started_at = None
+            t.error_message = None
+        if stuck:
+            _db.commit()
+            _log.info("⚙️  Reset %d stuck task(s) to pending on startup", len(stuck))
+
     finally:
         _db.close()
 

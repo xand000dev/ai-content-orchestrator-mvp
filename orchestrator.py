@@ -134,6 +134,68 @@ def _reconcile_all_agent_statuses(db):
         db.commit()
 
 
+# Tasks running longer than this are considered stuck (coroutine died silently)
+_TASK_WATCHDOG_MINUTES = 10
+
+
+def _watchdog_stuck_tasks(db):
+    """Reset tasks stuck in running/queued that are no longer in the _running set.
+
+    A task can get stuck when:
+    - Server was restarted (startup handles this, but watchdog is a safety net)
+    - An asyncio coroutine was cancelled without updating task status
+    - A network partition killed the connection without raising an exception
+    """
+    cutoff = datetime.utcnow() - timedelta(minutes=_TASK_WATCHDOG_MINUTES)
+
+    stuck = (
+        db.query(Task)
+        .filter(
+            Task.status.in_(["running", "queued"]),
+            Task.started_at < cutoff,
+            Task.id.notin_(list(_running)) if _running else Task.status.in_(["running", "queued"]),
+        )
+        .all()
+    )
+    # Also catch queued tasks with no started_at that have been waiting too long
+    queued_no_start = (
+        db.query(Task)
+        .filter(
+            Task.status == "queued",
+            Task.started_at.is_(None),
+            Task.created_at < cutoff,
+            Task.id.notin_(list(_running)) if _running else Task.status == "queued",
+        )
+        .all()
+    )
+
+    all_stuck = {t.id: t for t in stuck + queued_no_start}.values()
+    reset_count = 0
+    for task in all_stuck:
+        if task.id in _running:
+            continue  # genuinely running in this process — leave it alone
+        logger.warning(
+            "⚠️  Watchdog: reset stuck task '%s' (%s) status=%s started=%s",
+            task.step_name, task.id[:8], task.status, task.started_at,
+        )
+        task.status = "pending"
+        task.started_at = None
+        task.error_message = f"Auto-reset by watchdog after >{_TASK_WATCHDOG_MINUTES}min"
+        if task.agent_id:
+            ag = db.query(Agent).filter(Agent.id == task.agent_id).first()
+            if ag:
+                ag.status = "idle"
+        reset_count += 1
+
+    if reset_count:
+        db.commit()
+        asyncio.create_task(_broadcast_log(
+            "warn", "orchestrator",
+            f"⚠️  Watchdog: скинув {reset_count} завислих задач → pending",
+            {"count": reset_count},
+        ))
+
+
 # ─────────────────────────── Helper functions ────────────────────────────────
 
 def _collect_input(db, task: Task) -> dict:
@@ -649,5 +711,11 @@ async def orchestrator_loop():
             await _tick_schedules()
             from auto_manager import tick_auto_managers
             await tick_auto_managers()
+            # Watchdog: reset tasks stuck >10min that aren't actually running
+            _wd_db = SessionLocal()
+            try:
+                _watchdog_stuck_tasks(_wd_db)
+            finally:
+                _wd_db.close()
             tick_count = 0
         await asyncio.sleep(2)

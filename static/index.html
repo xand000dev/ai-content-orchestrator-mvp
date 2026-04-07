@@ -3340,18 +3340,25 @@ function app() {
     },
     agentOfficeState(agent) {
       const task = this.agentCurrentTask(agent);
-      if (!task) return 'idle';
-      if (task.status === 'running') return 'working';
-      if (task.status === 'queued') return 'thinking';
-      if (task.status === 'waiting_review') return 'review';
+      if (task) {
+        if (task.status === 'running') return 'working';
+        if (task.status === 'queued') return 'thinking';
+        if (task.status === 'waiting_review') return 'review';
+        if (task.status === 'error') return 'error';
+      }
+      // officeTasks may be stale — fall back to agent.status from live agents list
+      if (agent.status === 'busy') return 'working';
       return 'idle';
     },
     agentBubbleText(agent) {
       const task = this.agentCurrentTask(agent);
-      if (!task) return null; // idle agents are in break room, no desk bubble
-      if (task.status === 'running') return '⌨️ ' + (task.step_name || '').slice(0, 14);
-      if (task.status === 'queued') return '💭 ...';
-      if (task.status === 'waiting_review') return '👀 Review';
+      if (task) {
+        if (task.status === 'running') return '⌨️ ' + (task.step_name || '').slice(0, 14);
+        if (task.status === 'queued') return '💭 ...';
+        if (task.status === 'waiting_review') return '👀 Review';
+      }
+      // Fallback when officeTasks stale but agent is busy
+      if (agent.status === 'busy') return '⌨️ ...';
       return null;
     },
     agentRestBubble(agent) {

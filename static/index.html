@@ -162,6 +162,178 @@
       position:absolute; top:3px; right:3px;
       animation:sbpulse 1.2s infinite;
     }
+
+    /* ── Office / Game View ──────────────────────────────────────────────────── */
+    .office-building {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #1a2332;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #2d3f52;
+    }
+    .office-zone {
+      padding: 20px;
+      background: #080e1a;
+      position: relative;
+      min-height: 240px;
+    }
+    .office-zone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99,102,241,.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,.022) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+    .office-zone:nth-child(odd)  { border-right: 1px solid #1a2332; }
+    .office-zone:nth-child(n+3) { border-top: 1px solid #1a2332; }
+    .office-zone-misc {
+      grid-column: 1 / -1;
+      padding: 14px 20px;
+      background: #060c16;
+      border-top: 1px solid #1a2332;
+    }
+    .zone-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .zone-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: #2d3f52;
+    }
+    .zone-desks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      position: relative;
+      z-index: 1;
+      align-items: flex-start;
+    }
+    /* Desk unit */
+    .desk-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: transform .15s;
+    }
+    .desk-unit:hover { transform: translateY(-3px); }
+    .desk-surface {
+      width: 74px;
+      height: 50px;
+      background: #0b1220;
+      border: 1px solid #1a2535;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: border-color .2s, box-shadow .2s;
+      overflow: hidden;
+    }
+    .desk-surface::before { content:'💻'; font-size:15px; opacity:.3; }
+    .desk-surface.state-working  { border-color:#1e3a8a; box-shadow:0 0 10px rgba(59,130,246,.15); }
+    .desk-surface.state-thinking { border-color:#312e81; }
+    .desk-surface.state-review   { border-color:#78350f; box-shadow:0 0 10px rgba(251,191,36,.12); }
+    .desk-surface.state-error    { border-color:#7f1d1d; }
+    .desk-surface.state-idle     { border-color:#1a2535; }
+    .desk-progress {
+      position: absolute;
+      bottom: 0; left: 0; right: 0; height: 3px; background: transparent;
+    }
+    .desk-progress-fill {
+      height: 100%; border-radius: 0 0 0 7px;
+      background: linear-gradient(90deg,#4f46e5,#818cf8);
+      animation: desk-fill 60s linear forwards;
+    }
+    @keyframes desk-fill { from{width:0} to{width:100%} }
+    /* Agent sprite (top-down) */
+    .agent-sprite {
+      width: 44px; height: 46px;
+      position: relative;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end;
+    }
+    .sprite-body-wrap {
+      display: flex; flex-direction: column;
+      align-items: center;
+      position: relative; z-index: 2;
+      margin-bottom: 4px;
+    }
+    .sprite-head {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.1);
+      box-shadow: 0 2px 6px rgba(0,0,0,.5);
+      position: relative;
+    }
+    .sprite-head::before {
+      content: '';
+      position: absolute; top:52%; left:50%;
+      transform: translate(-50%,-10%);
+      width: 8px; height: 4px;
+      background: rgba(0,0,0,.3);
+      border-radius: 0 0 50% 50%;
+    }
+    .sprite-torso {
+      width: 14px; height: 9px;
+      border-radius: 3px;
+      margin-top: -2px; opacity: .78;
+    }
+    .sprite-shadow {
+      width: 22px; height: 7px;
+      background: rgba(0,0,0,.35);
+      border-radius: 50%;
+      position: absolute; bottom: 0; left: 50%;
+      transform: translateX(-50%); z-index: 1;
+    }
+    .agent-nameplate {
+      font-size: 9px; color: #1e2a3a; font-weight: 700;
+      max-width: 74px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+      text-align: center; letter-spacing: .02em;
+    }
+    .agent-nameplate.working  { color:#3b82f6; }
+    .agent-nameplate.thinking { color:#818cf8; }
+    .agent-nameplate.review   { color:#f59e0b; }
+    .agent-nameplate.error    { color:#f87171; }
+    /* Speech bubble */
+    .speech-bubble {
+      position: absolute; top:-28px; left:50%;
+      transform: translateX(-50%);
+      background: #111827; border:1px solid #1e2a3a;
+      border-radius: 8px; padding: 2px 7px;
+      font-size: 9px; color:#94a3b8;
+      white-space: nowrap; pointer-events: none; z-index: 20;
+    }
+    .speech-bubble::after {
+      content:''; position:absolute; top:100%; left:50%;
+      transform:translateX(-50%);
+      border:4px solid transparent; border-top-color:#1e2a3a;
+    }
+    /* Sprite state animations */
+    @keyframes sp-bob   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+    @keyframes sp-type  { 0%,100%{transform:translateX(0) rotate(0)} 30%{transform:translateX(1.5px) rotate(-2deg)} 70%{transform:translateX(-1.5px) rotate(2deg)} }
+    @keyframes sp-think { 0%,100%{opacity:1} 50%{opacity:.4} }
+    @keyframes sp-pop   { 0%{transform:scale(1)} 35%{transform:scale(1.45)} 65%{transform:scale(.9)} 100%{transform:scale(1)} }
+    @keyframes sp-shake { 0%,100%{transform:rotate(0)} 15%{transform:rotate(-9deg)} 35%{transform:rotate(9deg)} 55%{transform:rotate(-5deg)} 75%{transform:rotate(5deg)} }
+    .sprite-idle     .sprite-body-wrap { animation: sp-bob   2s   ease-in-out infinite; }
+    .sprite-working  .sprite-body-wrap { animation: sp-type  .18s ease-in-out infinite; }
+    .sprite-thinking .sprite-body-wrap { animation: sp-think 1.1s ease-in-out infinite; }
+    .sprite-done     .sprite-body-wrap { animation: sp-pop   .55s ease forwards; }
+    .sprite-error    .sprite-body-wrap { animation: sp-shake .5s  ease; }
+    .sprite-review   .sprite-body-wrap { animation: sp-think 2.2s ease-in-out infinite; }
   </style>
 </head>
 <body x-data="app()" x-init="init()">
@@ -1871,8 +2043,197 @@
 
 </div>
 
+<!-- ─────────────────────── OFFICE / GAME VIEW ─────────────────────── -->
+<div x-show="currentTab === 'office'" x-cloak class="space-y-4"
+  x-effect="if(currentTab === 'office') loadOfficeTasks()">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 flex-wrap">
+    <div style="font-size:13px;color:#334155;">Кімнати офісу оновлюються в реальному часі — натисни на агента для деталей і управління</div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-1.5">
+        <div class="w-2 h-2 rounded-full" style="background:#22c55e;box-shadow:0 0 6px #22c55e"
+          x-show="agents.filter(a=>a.status==='busy').length > 0"></div>
+        <span style="font-size:12px;color:#334155;"
+          x-text="agents.filter(a=>a.status==='busy').length + ' / ' + agents.length + ' агентів зайнято'"></span>
+      </div>
+      <button @click="loadOfficeTasks(); fetchAgents()" class="btn-ghost" style="font-size:12px;padding:5px 10px;">↺ Оновити</button>
+    </div>
+  </div>
+
+  <!-- Office building -->
+  <div class="office-building">
+
+    <!-- 4 main zones via x-for -->
+    <template x-for="zone in officeZones" :key="zone.type">
+      <div class="office-zone">
+        <div class="zone-header">
+          <span style="font-size:13px;" x-text="zone.icon"></span>
+          <span class="zone-title" x-text="zone.label"></span>
+          <span class="ml-auto" style="font-size:9px;color:#1e2a3a;font-weight:600;"
+            x-text="agents.filter(a=>a.type===zone.type&&a.status==='busy').length + '/' + agents.filter(a=>a.type===zone.type).length"></span>
+        </div>
+        <div class="zone-desks">
+          <template x-for="agent in agents.filter(a => a.type === zone.type)" :key="agent.id">
+            <div class="desk-unit" @click="openOfficeModal(agent)" :title="agent.name">
+              <!-- Desk surface -->
+              <div class="desk-surface" :class="'state-' + agentOfficeState(agent)">
+                <div class="desk-progress" x-show="agentOfficeState(agent) === 'working'">
+                  <div class="desk-progress-fill" :key="(agentCurrentTask(agent) || {}).id || 'none'"></div>
+                </div>
+              </div>
+              <!-- Sprite -->
+              <div class="agent-sprite" :class="'sprite-' + agentOfficeState(agent)">
+                <div class="speech-bubble" x-show="agentBubbleText(agent)" x-text="agentBubbleText(agent)"></div>
+                <div class="sprite-body-wrap">
+                  <div class="sprite-head" :style="'background:' + agentTypeColor(agent.type)"></div>
+                  <div class="sprite-torso" :style="'background:' + agentTypeColor(agent.type)"></div>
+                </div>
+                <div class="sprite-shadow"></div>
+              </div>
+              <!-- Nameplate -->
+              <div class="agent-nameplate"
+                :class="agentOfficeState(agent) !== 'idle' ? agentOfficeState(agent) : ''"
+                x-text="agent.name"></div>
+            </div>
+          </template>
+          <!-- Empty state -->
+          <div x-show="agents.filter(a => a.type === zone.type).length === 0"
+            style="color:#131f2e;font-size:11px;padding:28px;text-align:center;width:100%;">
+            Агентів немає
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Misc zone for image / voice / custom -->
+    <template x-if="agents.filter(a => ['image','voice','custom'].includes(a.type)).length > 0">
+      <div class="office-zone-misc">
+        <div class="zone-header">
+          <span style="font-size:13px;">⚙️</span>
+          <span class="zone-title">Спеціалісти</span>
+        </div>
+        <div class="zone-desks">
+          <template x-for="agent in agents.filter(a => ['image','voice','custom'].includes(a.type))" :key="agent.id">
+            <div class="desk-unit" @click="openOfficeModal(agent)" :title="agent.name">
+              <div class="desk-surface" :class="'state-' + agentOfficeState(agent)">
+                <div class="desk-progress" x-show="agentOfficeState(agent) === 'working'">
+                  <div class="desk-progress-fill" :key="(agentCurrentTask(agent) || {}).id || 'none'"></div>
+                </div>
+              </div>
+              <div class="agent-sprite" :class="'sprite-' + agentOfficeState(agent)">
+                <div class="speech-bubble" x-show="agentBubbleText(agent)" x-text="agentBubbleText(agent)"></div>
+                <div class="sprite-body-wrap">
+                  <div class="sprite-head" :style="'background:' + agentTypeColor(agent.type)"></div>
+                  <div class="sprite-torso" :style="'background:' + agentTypeColor(agent.type)"></div>
+                </div>
+                <div class="sprite-shadow"></div>
+              </div>
+              <div class="agent-nameplate"
+                :class="agentOfficeState(agent) !== 'idle' ? agentOfficeState(agent) : ''"
+                x-text="agent.name"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+  </div><!-- /office-building -->
+
+  <!-- Legend -->
+  <div class="flex items-center gap-5 flex-wrap" style="padding:2px 0;">
+    <span style="font-size:10px;color:#1e2a3a;font-weight:700;letter-spacing:.05em;">ЛЕГЕНДА</span>
+    <div class="flex items-center gap-1.5"><div style="width:9px;height:9px;border-radius:50%;background:#1e2a3a;"></div><span style="font-size:10px;color:#1e2a3a;">Вільний</span></div>
+    <div class="flex items-center gap-1.5"><div style="width:9px;height:9px;border-radius:50%;background:#3b82f6;box-shadow:0 0 5px rgba(59,130,246,.5);"></div><span style="font-size:10px;color:#475569;">Працює</span></div>
+    <div class="flex items-center gap-1.5"><div style="width:9px;height:9px;border-radius:50%;background:#818cf8;"></div><span style="font-size:10px;color:#475569;">У черзі</span></div>
+    <div class="flex items-center gap-1.5"><div style="width:9px;height:9px;border-radius:50%;background:#f59e0b;box-shadow:0 0 5px rgba(245,158,11,.4);"></div><span style="font-size:10px;color:#475569;">Перевірка</span></div>
+    <div class="flex items-center gap-1.5"><div style="width:9px;height:9px;border-radius:50%;background:#ef4444;"></div><span style="font-size:10px;color:#475569;">Помилка</span></div>
+  </div>
+
+  <!-- Empty state if no agents at all -->
+  <div x-show="agents.length === 0" class="flex flex-col items-center justify-center py-20">
+    <div style="font-size:48px;opacity:.2;margin-bottom:16px;">🏢</div>
+    <div style="font-size:15px;font-weight:700;color:#1e2a3a;">Офіс порожній</div>
+    <div style="font-size:13px;color:#1a2332;margin-top:6px;">Додай агентів у вкладці «Агенти»</div>
+    <button @click="currentTab='agents'; openAgentModal()" class="btn-primary mt-5">＋ Найняти першого агента</button>
+  </div>
+
+</div><!-- /office tab -->
+
   </main>
 </div>
+</div>
+
+<!-- ═══════════════════════════════ OFFICE AGENT MODAL ═══════════════════════════════ -->
+<div x-show="officeModal.open" x-cloak
+  style="position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;background:rgba(4,7,18,.75);"
+  @click.self="officeModal.open = false">
+  <div class="card" style="width:440px;max-width:94vw;padding:24px;position:relative;border-color:#1e2a3a;">
+
+    <!-- Agent header -->
+    <div class="flex items-center gap-3 mb-5" x-show="officeModal.agent">
+      <div style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;"
+        :style="'background:' + agentTypeColor(officeModal.agent?.type) + '22;border:2px solid ' + agentTypeColor(officeModal.agent?.type) + '44'">
+        <span x-text="agentTypeIcon(officeModal.agent?.type)"></span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div style="font-size:15px;font-weight:700;color:#f1f5f9;" x-text="officeModal.agent?.name"></div>
+        <div style="font-size:11px;color:#475569;margin-top:2px;" x-text="officeModal.agent?.model?.split('/').pop()"></div>
+      </div>
+      <span class="sb" :class="'sb-' + officeModal.agent?.status" x-text="sl(officeModal.agent?.status)"></span>
+    </div>
+
+    <!-- Current task -->
+    <template x-if="officeModal.task">
+      <div class="space-y-3">
+        <div style="font-size:10px;color:#2d3f52;text-transform:uppercase;letter-spacing:.07em;font-weight:700;">Поточна задача</div>
+        <div class="card p-3" style="border-color:#1e2a3a;">
+          <div class="flex items-center justify-between mb-1">
+            <span style="font-size:13px;font-weight:600;color:#e2e8f0;" x-text="officeModal.task.step_name"></span>
+            <span class="sb" :class="'sb-' + officeModal.task.status" x-text="sl(officeModal.task.status)"></span>
+          </div>
+          <div style="font-size:10px;color:#334155;margin-bottom:8px;" x-text="'Job: ' + (officeModal.task.job_id || '').slice(0,8)"></div>
+          <!-- Output preview -->
+          <div x-show="officeModal.task.output_data?.result">
+            <div style="font-size:10px;color:#2d3f52;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;">Результат</div>
+            <div style="font-size:11px;color:#64748b;line-height:1.5;max-height:110px;overflow-y:auto;background:#060911;padding:8px;border-radius:6px;word-break:break-word;"
+              x-text="(officeModal.task.output_data?.result || '').slice(0, 400) + ((officeModal.task.output_data?.result || '').length > 400 ? '…' : '')"></div>
+          </div>
+          <!-- Error -->
+          <div x-show="officeModal.task.error_message"
+            style="font-size:11px;color:#f87171;margin-top:6px;padding:6px 8px;background:#1c0a0a;border-radius:6px;"
+            x-text="officeModal.task.error_message"></div>
+        </div>
+        <!-- Actions -->
+        <div class="flex gap-2">
+          <template x-if="officeModal.task.status === 'waiting_review'">
+            <div class="flex gap-2 w-full">
+              <button @click="approveOfficeTask(officeModal.task.id)" class="btn-success" style="flex:1;">✓ Схвалити</button>
+              <button @click="rejectOfficeTask(officeModal.task.id)" class="btn-danger"  style="flex:1;">✕ Відхилити</button>
+            </div>
+          </template>
+          <template x-if="officeModal.task.status === 'error'">
+            <button @click="retryOfficeTask(officeModal.task.id)" class="btn-primary" style="width:100%;">↻ Перезапустити задачу</button>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- Idle -->
+    <template x-if="!officeModal.task">
+      <div style="text-align:center;padding:24px 0;">
+        <div style="font-size:30px;opacity:.3;margin-bottom:8px;">😴</div>
+        <div style="font-size:13px;color:#334155;">Агент зараз відпочиває</div>
+        <div style="font-size:11px;color:#1e2a3a;margin-top:4px;">Завдань у черзі немає</div>
+      </div>
+    </template>
+
+    <!-- Footer -->
+    <div class="flex items-center gap-2 mt-5" style="padding-top:14px;border-top:1px solid #1a2332;">
+      <button @click="officeModal.open = false; openAgentDetail(officeModal.agent)" class="btn-ghost" style="font-size:12px;">Профіль →</button>
+      <button @click="officeModal.open = false" class="btn-ghost ml-auto" style="font-size:12px;">Закрити</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════ WORKSPACE BUILDER MODAL ═══════════════════════════════ -->
@@ -2136,6 +2497,16 @@ function app() {
       { id: 'strategy',  icon: '💡',  label: 'Стратегія', fullLabel: 'Стратегія контенту' },
       { id: 'vault',     icon: '🗃',  label: 'Сховище',   fullLabel: 'Obsidian Сховище' },
       { id: 'workspace', icon: '🖥',  label: 'Воркспейс', fullLabel: 'Мої Воркспейси' },
+      { id: 'office',    icon: '🏢',  label: 'Офіс',      fullLabel: '🏢 AI Office — Живий вид агентів' },
+    ],
+
+    officeTasks: [],
+    officeModal: { open: false, agent: null, task: null },
+    officeZones: [
+      { type: 'researcher', icon: '🔍', label: 'Дослідження' },
+      { type: 'writer',     icon: '✍️', label: 'Написання' },
+      { type: 'editor',     icon: '✂️', label: 'Редагування' },
+      { type: 'publisher',  icon: '📤', label: 'Публікація' },
     ],
 
     agents: [], jobs: [], pipelines: [], platforms: [], reviewTasks: [],
@@ -2202,7 +2573,8 @@ function app() {
       await this.fetchAll();
       this.initWS();
       this.loadConsoleLogs();
-      setInterval(() => this.fetchAll(), 8000);
+      this.loadOfficeTasks();
+      setInterval(() => { this.fetchAll(); if (this.currentTab === 'office') this.loadOfficeTasks(); }, 8000);
     },
     async fetchAll() {
       await Promise.all([
@@ -2451,6 +2823,7 @@ function app() {
         const msg = JSON.parse(e.data);
         if (['task_update', 'job_update', 'telegram_posted'].includes(msg.type)) {
           this.fetchJobs(); this.fetchAgents(); this.fetchReview();
+          if (this.currentTab === 'office') this.loadOfficeTasks();
         }
         if (msg.type === 'task_update' && msg.status === 'waiting_review') {
           const label = msg.step_name || 'крок';
@@ -2817,6 +3190,72 @@ function app() {
     },
     widgetLabel(type) { return this.widgetCatalog.find(c => c.type === type)?.label || type; },
     widgetIcon(type)  { return this.widgetCatalog.find(c => c.type === type)?.icon  || '□'; },
+
+    // ── Office / Game View ────────────────────────────────────────────────────
+    async loadOfficeTasks() {
+      const tasks = await this.get('/api/tasks?limit=200');
+      this.officeTasks = Array.isArray(tasks) ? tasks : [];
+    },
+    agentCurrentTask(agent) {
+      if (!agent) return null;
+      return this.officeTasks.find(t =>
+        t.agent_id === agent.id &&
+        ['queued', 'running', 'waiting_review'].includes(t.status)
+      ) || null;
+    },
+    agentOfficeState(agent) {
+      const task = this.agentCurrentTask(agent);
+      if (!task) return 'idle';
+      if (task.status === 'running') return 'working';
+      if (task.status === 'queued') return 'thinking';
+      if (task.status === 'waiting_review') return 'review';
+      return 'idle';
+    },
+    agentBubbleText(agent) {
+      const task = this.agentCurrentTask(agent);
+      if (!task) return null;
+      if (task.status === 'running') return '⌨️ ' + (task.step_name || '').slice(0, 14);
+      if (task.status === 'queued') return '💭 ...';
+      if (task.status === 'waiting_review') return '👀 Review';
+      return null;
+    },
+    agentTypeColor(type) {
+      const c = { researcher:'#3b82f6', writer:'#10b981', editor:'#f59e0b', publisher:'#8b5cf6', image:'#ec4899', voice:'#06b6d4', custom:'#6b7280' };
+      return c[type] || '#6b7280';
+    },
+    agentTypeIcon(type) {
+      const m = { researcher:'🔍', writer:'✍️', editor:'✂️', publisher:'📤', image:'🖼', voice:'🎙', custom:'⚙️' };
+      return m[type] || '⬡';
+    },
+    async openOfficeModal(agent) {
+      await this.loadOfficeTasks();
+      const task = this.agentCurrentTask(agent);
+      this.officeModal = { open: true, agent, task };
+    },
+    async approveOfficeTask(taskId) {
+      const r = await this.post(`/api/tasks/${taskId}/approve`, { comment: '' });
+      if (r) {
+        this.officeModal.open = false;
+        await Promise.all([this.fetchReview(), this.fetchJobs(), this.loadOfficeTasks()]);
+        this.toast('Крок схвалено ✓');
+      }
+    },
+    async rejectOfficeTask(taskId) {
+      const r = await this.post(`/api/tasks/${taskId}/reject`, { comment: '' });
+      if (r) {
+        this.officeModal.open = false;
+        await Promise.all([this.fetchReview(), this.fetchJobs(), this.loadOfficeTasks()]);
+        this.toast('Крок відхилено', 'warn');
+      }
+    },
+    async retryOfficeTask(taskId) {
+      const r = await this.post(`/api/tasks/${taskId}/retry`, {});
+      if (r) {
+        this.officeModal.open = false;
+        await Promise.all([this.fetchJobs(), this.loadOfficeTasks()]);
+        this.toast('Задачу перезапущено');
+      }
+    },
   };
 }
 </script>

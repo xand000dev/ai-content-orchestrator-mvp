@@ -14,6 +14,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta
+from typing import Set
 
 from database import (
     SessionLocal, AutoManager, Strategy, TopicSuggestion,
@@ -353,11 +354,20 @@ async def _generate_topics_for_strategy(db, strategy_id: str, count: int) -> int
 
 # ── Main cycle ────────────────────────────────────────────────────────────────
 
+# Guard: prevent concurrent runs of the same manager
+_running_managers: Set[str] = set()
+
+
 async def run_auto_manager(am_id: str, force: bool = False):
     """Execute one full AutoManager decision cycle: observe → think → act → broadcast.
 
     force=True skips the active check (used for manual "Run now" triggers).
     """
+    if am_id in _running_managers:
+        logger.info("🤖 AutoManager %s already running — skipping duplicate", am_id[:8])
+        return
+    _running_managers.add(am_id)
+
     from openrouter import call_openrouter
     from orchestrator import manager as ws_manager, _broadcast_log  # local import to avoid circular
 
@@ -436,6 +446,7 @@ async def run_auto_manager(am_id: str, force: bool = False):
     except Exception as e:
         logger.exception("AutoManager '%s' cycle error: %s", am_id, e)
     finally:
+        _running_managers.discard(am_id)
         db.close()
 
 

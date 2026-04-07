@@ -392,6 +392,7 @@ async def run_auto_manager(am_id: str, force: bool = False):
                 system_prompt=system_prompt,
                 user_message=user_message,
                 api_key=os.getenv("OPENROUTER_API_KEY"),
+                max_tokens=1500,  # AutoManager needs only a short JSON decision
             )
         except Exception as e:
             logger.error("AutoManager '%s' OpenRouter error: %s", am.name, e)

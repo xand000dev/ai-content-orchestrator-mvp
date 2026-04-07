@@ -23,6 +23,20 @@ _RETRY_DELAYS = [15, 30, 60]
 # Запобігає масовим 429 при паралельній роботі агентів
 _semaphore = asyncio.Semaphore(3)
 
+# Дефолтний таймаут і overrides для thinking-моделей (можуть думати 3-5 хв)
+_DEFAULT_TIMEOUT = 120.0
+_MODEL_TIMEOUTS: dict[str, float] = {
+    "qwen/qwen3.6-plus:free":          300.0,
+    "qwen/qwen3-235b-a22b:free":       300.0,
+    "qwen/qwen3-30b-a3b:free":         240.0,
+    "deepseek/deepseek-r1:free":       300.0,
+    "deepseek/deepseek-r1-0528:free":  300.0,
+    "deepseek/deepseek-r1-0528-qwen3-8b:free": 240.0,
+}
+
+def _model_timeout(model: str) -> float:
+    return _MODEL_TIMEOUTS.get(model, _DEFAULT_TIMEOUT)
+
 
 class OpenRouterError(Exception):
     """Помилка від OpenRouter API з деталями."""
@@ -95,6 +109,7 @@ async def call_openrouter(
     system_prompt: str,
     user_message: str,
     api_key: str | None = None,
+    max_tokens: int | None = None,
 ) -> str:
     key = api_key or os.getenv("OPENROUTER_API_KEY", "")
     if not key:
@@ -104,6 +119,8 @@ async def call_openrouter(
             model=model,
         )
 
+    timeout = _model_timeout(model)
+
     payload = {
         "model": model,
         "messages": [
@@ -111,6 +128,8 @@ async def call_openrouter(
             {"role": "user",   "content": user_message},
         ],
     }
+    if max_tokens:
+        payload["max_tokens"] = max_tokens
     headers = {
         "Authorization": f"Bearer {key}",
         "HTTP-Referer": "http://localhost:8000",
@@ -131,7 +150,7 @@ async def call_openrouter(
         try:
             # Семафор обмежує кількість одночасних запитів
             async with _semaphore:
-                async with httpx.AsyncClient(timeout=120.0) as client:
+                async with httpx.AsyncClient(timeout=timeout) as client:
                     resp = await client.post(
                         f"{OPENROUTER_BASE_URL}/chat/completions",
                         headers=headers,
@@ -192,7 +211,7 @@ async def call_openrouter(
             )
         except httpx.TimeoutException:
             last_error = OpenRouterError(
-                f"Timeout (120s) при запиті до {model}",
+                f"Timeout ({int(timeout)}s) при запиті до {model}",
                 model=model,
             )
             continue

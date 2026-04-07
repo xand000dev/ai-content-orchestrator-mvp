@@ -116,6 +116,24 @@ def _sync_agent_status(db, agent_id: str, busy_counts: dict):
         agent.status = "busy" if count > 0 else "idle"
 
 
+def _reconcile_all_agent_statuses(db):
+    """Reconcile every agent's status against actual queued/running task count.
+
+    Called at the start of every tick so agents never stay permanently 'busy'
+    after a job finishes, crashes, or is stopped.
+    """
+    busy_counts = _get_busy_counts(db)
+    agents = db.query(Agent).filter(Agent.status.in_(["idle", "busy"])).all()
+    changed = False
+    for agent in agents:
+        expected = "busy" if busy_counts.get(agent.id, 0) > 0 else "idle"
+        if agent.status != expected:
+            agent.status = expected
+            changed = True
+    if changed:
+        db.commit()
+
+
 # ─────────────────────────── Helper functions ────────────────────────────────
 
 def _collect_input(db, task: Task) -> dict:
@@ -470,6 +488,9 @@ async def _run_task(task_id: str):
 async def _tick():
     db = SessionLocal()
     try:
+        # Always reconcile agent statuses — fixes stuck 'busy' after crash/stop
+        _reconcile_all_agent_statuses(db)
+
         running_jobs = db.query(Job).filter(Job.status == "running").all()
         if not running_jobs:
             return
